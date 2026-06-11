@@ -110,14 +110,20 @@ if uploaded_file is not None:
         st.rerun()
 
     try:
-        # Load Raw Data
-        if uploaded_file.name.endswith('.csv'):
-            df = pd.read_csv(uploaded_file, header=None)
-        else:
-            df = pd.read_excel(uploaded_file, header=None)
+        # FIX: Safe dynamic raw file reading stream block
+        file_bytes = uploaded_file.getvalue()
         
-        # Clean up empty headers/rows
+        if uploaded_file.name.endswith('.csv'):
+            # Convert raw bytes stream safely to clear memory text lines
+            data_str = file_bytes.decode('utf-8', errors='ignore')
+            df = pd.read_csv(io.StringIO(data_str), header=None)
+        else:
+            df = pd.read_excel(io.BytesIO(file_bytes), header=None)
+        
+        # Strip out empty spacers safely now that it is a validated DataFrame object
         df = df.dropna(how='all').dropna(axis=1, how='all')
+        
+        # Re-index first true text row as headers
         df.columns = df.iloc[0].astype(str).str.strip()
         df = df[1:].reset_index(drop=True)
         
@@ -138,6 +144,7 @@ if uploaded_file is not None:
         
         if missing_targets:
             st.error(f"Execution Halted. Could not auto-detect columns for: {missing_targets}")
+            st.info(f"Columns discovered: {list(df.columns)}")
         else:
             st.success("✨ Data payload mapped successfully!")
             
@@ -232,12 +239,12 @@ if uploaded_file is not None:
                     
                     progress_bar.progress((idx + 1) / total_rows)
                 
-                # FIX: Using direct string buffer serialization destinations safely
+                # Stream binary buffer block safely
                 pdf_output = pdf.output(dest='S')
                 if isinstance(pdf_output, str):
                     st.session_state["pdf_data_buffer"] = pdf_output.encode('latin-1')
                 else:
-                    st.session_state["pdf_data_buffer"] = pdf_output
+                    st.session_state["pdf_data_buffer"] = bytes(pdf_output)
                 
                 st.balloons()
                 st.rerun()

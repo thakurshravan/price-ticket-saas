@@ -40,14 +40,17 @@ price_size = st.sidebar.slider("Price Font Size", 12, 24, 16)
 st.title("🎟️ Custom SaaS Bulk Price Ticket Generator")
 st.write("Upload an Excel file, configure dimensions/branding on the sidebar, and export clean print-ready vector PDFs.")
 
-# Downloadable Sample template helper
-st.markdown("💡 **Excel Format Requirement:** Your spreadsheet columns must be named exactly: `SKU`, `Product Name`, `Price`, `URL`")
+st.markdown("💡 **Excel Format Requirement:** Your spreadsheet columns must contain: `SKU`, `Product Name`, `Price`, `URL`")
 
 uploaded_file = st.file_uploader("Upload Product Excel File (.xlsx)", type=["xlsx"])
 
 if uploaded_file is not None:
     try:
         df = pd.read_excel(uploaded_file)
+        
+        # FIX: Strip any accidental trailing or leading spaces from the column headers!
+        df.columns = df.columns.str.strip()
+        
         st.success("✨ Data payload imported successfully!")
         
         # UI Previews
@@ -55,7 +58,7 @@ if uploaded_file is not None:
         with col1:
             st.metric(label="Total Tickets to Process", value=len(df))
         with col2:
-            st.write("Data Preview:")
+            st.write("Data Preview (Cleaned Columns):")
             st.dataframe(df.head(3), height=120)
         
         # Validation checks
@@ -108,7 +111,7 @@ if uploaded_file is not None:
                     pdf.set_text_color(text_r, text_g, text_b)
                     pdf.set_font(font_choice, 'B', size=title_size)
                     pdf.set_xy(4, 3.5)
-                    pdf.cell(w - 8, 5, txt=str(row['Product Name'])[:25], ln=True, align='L')
+                    pdf.cell(w - 8, 5, text=str(row['Product Name'])[:25], new_x="LMARGIN", new_y="NEXT", align='L')
                     
                     # Reset text color back to user choice for lower areas if changed by header rule
                     pdf.set_text_color(p_r, p_g, p_b)
@@ -116,7 +119,7 @@ if uploaded_file is not None:
                     # 2. SKU Placement
                     pdf.set_font(font_choice, '', size=8)
                     pdf.set_xy(4, 11 if bg_style == "Solid Accent Header" else 9)
-                    pdf.cell(w - 8, 4, txt=f"SKU: {row['SKU']}", ln=True, align='L')
+                    pdf.cell(w - 8, 4, text=f"SKU: {row['SKU']}", new_x="LMARGIN", new_y="NEXT", align='L')
                     
                     # 3. Dynamic QR Engine Positioning
                     qr_dim = dimensions['qr_size']
@@ -125,10 +128,10 @@ if uploaded_file is not None:
                     # 4. Large Premium Price Layout
                     pdf.set_font(font_choice, 'B', size=price_size)
                     pdf.set_xy(4, h - 12)
-                    pdf.cell(w - qr_dim - 8, 8, txt=f"AED {row['Price']:.2f}", ln=False, align='L')
+                    pdf.cell(w - qr_dim - 8, 8, text=f"AED {row['Price']:.2f}", align='L')
                 
                 # Compress into raw bytes safely in memory
-                pdf_output = pdf.output(dest='S').encode('latin-1')
+                pdf_output = pdf.output()
                 
                 st.balloons()
                 st.download_button(
@@ -139,4 +142,4 @@ if uploaded_file is not None:
                 )
                 
     except Exception as e:
-        st.st.error(f"Fatal Parser Error encountered processing the Excel document: {e}")
+        st.error(f"Fatal Parser Error encountered processing the Excel document: {e}")

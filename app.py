@@ -7,6 +7,10 @@ import io
 
 st.set_page_config(page_title="SaaS Bulk Label Generator", layout="wide")
 
+# Initialize Session State for file management resets
+if "file_uploader_key" not in st.session_state:
+    st.session_state["file_uploader_key"] = 0
+
 # --- SIDEBAR: SAAS CONFIGURATION & CUSTOMIZATION ---
 st.sidebar.header("🎨 Ticket Customization Engine")
 
@@ -52,9 +56,22 @@ st.write("Upload an Excel or CSV file, customize templates on the sidebar, and p
 
 st.markdown("💡 **Format Requirement:** Your sheet columns must contain: `SKU`, `Product Name`, `Price`, `URL`")
 
-uploaded_file = st.file_uploader("Upload Product File (.xlsx or .csv)", type=["xlsx", "csv"])
+# Clear/Delete file function handler
+def clear_file_callback():
+    st.session_state["file_uploader_key"] += 1
+
+# Upload Widget anchored to our dynamic key state tracker
+uploaded_file = st.file_uploader(
+    "Upload Product File (.xlsx or .csv)", 
+    type=["xlsx", "csv"], 
+    key=f"file_uploader_{st.session_state['file_uploader_key']}"
+)
 
 if uploaded_file is not None:
+    # Add a prominent manual delete/clear button right under the file box
+    if st.button("🗑️ Clear File & Reset Canvas", on_click=clear_file_callback):
+        st.rerun()
+
     try:
         if uploaded_file.name.endswith('.csv'):
             df = pd.read_csv(uploaded_file)
@@ -64,29 +81,51 @@ if uploaded_file is not None:
         else:
             df = pd.read_excel(uploaded_file)
         
-        df.columns = df.columns.str.strip()
-        st.success("✨ Data payload imported successfully!")
+        # Strip whitespaces from column headers safely
+        df.columns = df.columns.astype(str).str.strip()
         
-        col1, col2 = st.columns([1, 2])
-        with col1:
-            st.metric(label="Total Tickets to Process", value=len(df))
-        with col2:
-            st.write("Data Preview:")
-            st.dataframe(df.head(3), height=120)
+        # --- ROBUST COLUMN MAPPER (Bypasses spelling/casing issues) ---
+        mapped_cols = {}
+        for col in df.columns:
+            col_lower = col.lower()
+            if "sku" in col_lower:
+                mapped_cols["SKU"] = col
+            elif "product" in col_lower or "name" in col_lower or "title" in col_lower:
+                mapped_cols["Product Name"] = col
+            elif "price" in col_lower or "rate" in col_lower or "mrp" in col_lower:
+                mapped_cols["Price"] = col
+            elif "url" in col_lower or "link" in col_lower or "website" in col_lower:
+                mapped_cols["URL"] = col
+
+        # Verify minimum mandatory targets found
+        required_targets = ["SKU", "Product Name", "Price", "URL"]
+        missing_targets = [t for t in required_targets if t not in mapped_cols]
         
-        required_cols = ["SKU", "Product Name", "Price", "URL"]
-        missing_cols = [col for col in required_cols if col not in df.columns]
-        
-        if missing_cols:
-            st.error(f"Execution Halted. Missing columns inside File: {missing_cols}")
+        if missing_targets:
+            st.error(f"Execution Halted. Could not auto-detect columns for: {missing_targets}")
+            st.info(f"Available columns found inside your uploaded file were: {list(df.columns)}")
         else:
+            st.success("✨ Data payload mapped successfully!")
+            
+            col1, col2 = st.columns([1, 2])
+            with col1:
+                st.metric(label="Total Tickets to Process", value=len(df))
+            with col2:
+                st.write("Mapped Data Fields Preview:")
+                preview_df = pd.DataFrame({
+                    "SKU": df[mapped_cols["SKU"]],
+                    "Product Name": df[mapped_cols["Product Name"]],
+                    "Price": df[mapped_cols["Price"]],
+                    "URL": df[mapped_cols["URL"]]
+                })
+                st.dataframe(preview_df.head(3), height=120)
+
             if st.button("🚀 Render Custom Tickets Portfolio"):
                 
                 orient = 'L' if dimensions['w'] > dimensions['h'] else 'P'
                 w, h = dimensions['w'], dimensions['h']
                 qr_dim = dimensions['qr_size']
                 
-                # We switch off page break tracking entirely right at creation
                 pdf = FPDF(orientation=orient, unit='mm', format=(w, h))
                 pdf.set_margin(0)
                 pdf.set_auto_page_break(False)
@@ -96,6 +135,12 @@ if uploaded_file is not None:
                 
                 for idx, row in df.iterrows():
                     pdf.add_page()
+                    
+                    # Target Mapped Row Extraction
+                    row_sku = str(row[mapped_cols["SKU"]])
+                    row_name = str(row[mapped_cols["Product Name"]])
+                    row_url = str(row[mapped_cols["URL"]])
+                    raw_price = row[mapped_cols["Price"]]
                     
                     if bg_style == "Solid Accent Header":
                         pdf.set_fill_color(p_r, p_g, p_b)
@@ -111,9 +156,9 @@ if uploaded_file is not None:
                         pdf.set_linewidth(0.4)
                         pdf.rect(1.5, 1.5, w - 3, h - 3)
                     
-                    # Generate QR Code image in memory
+                    # Generate QR Code image in memory safely
                     qr = QRCode(box_size=1, border=0)
-                    qr.add_data(str(row['URL']))
+                    qr.add_data(row_url)
                     qr.make(fit=True)
                     qr_img = qr.make_image(fill_color="black", back_color="white")
                     
@@ -121,42 +166,34 @@ if uploaded_file is not None:
                     qr_img.save(img_buffer, format="PNG")
                     img_buffer.seek(0)
                     
-                    allowed_text_width = w - qr_dim - 10
-                    
-                    # 1. Product Title Text
+                    # 1. Title Processing
                     pdf.set_text_color(text_r, text_g, text_b)
                     pdf.set_font(font_choice, 'B', size=title_size)
                     
-                    # FIX: Truncate string manually to 2 lines maximum to safeguard memory layout constraints
-                    prod_name = str(row['Product Name'])
-                    if len(prod_name) > 24:
-                        line1 = prod_name[:24]
-                        line2 = prod_name[24:48] + "..." if len(prod_name) > 48 else prod_name[24:]
+                    if len(row_name) > 24:
+                        line1 = row_name[:24]
+                        line2 = row_name[24:45] + "..." if len(row_name) > 45 else row_name[24:]
                         pdf.text(4, start_y + 3, line1)
                         pdf.text(4, start_y + 7, line2)
-                        next_element_y = start_y + 12
                     else:
-                        pdf.text(4, start_y + 4, prod_name)
-                        next_element_y = start_y + 9
+                        pdf.text(4, start_y + 4, row_name)
                     
-                    # Reset text color back to user choice
                     pdf.set_text_color(p_r, p_g, p_b)
                     
-                    # 2. SKU Placement
+                    # 2. SKU Processing (Absolute layout location)
                     pdf.set_font(font_choice, '', size=8)
-                    sku_y = max(next_element_y, 13 if bg_style == "Solid Accent Header" else 10)
-                    pdf.text(4, sku_y, f"SKU: {row['SKU']}")
+                    pdf.text(4, 15 if bg_style == "Solid Accent Header" else 13, f"SKU: {row_sku}")
                     
-                    # 3. Dynamic QR Placement
+                    # 3. Dynamic QR Code placement
                     pdf.image(img_buffer, x=w - qr_dim - 4, y=h - qr_dim - 4, w=qr_dim, h=qr_dim)
                     
-                    # 4. Large Price Layout
+                    # 4. Price Parsing & Layout Processing
                     pdf.set_font(font_choice, 'B', size=price_size)
                     try:
-                        price_val = float(row['Price'])
+                        price_val = float(raw_price)
                         price_text = f"AED {price_val:.2f}"
                     except:
-                        price_text = f"AED {row['Price']}"
+                        price_text = f"AED {raw_price}"
                         
                     pdf.text(4, h - 5, price_text)
                     

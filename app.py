@@ -117,7 +117,6 @@ if uploaded_file is not None:
         else:
             df = pd.read_excel(io.BytesIO(file_bytes), header=None)
         
-        # Clean up empty headers/rows safely
         df = df.dropna(how='all').dropna(axis=1, how='all')
         df.columns = df.iloc[0].astype(str).str.strip()
         df = df[1:].reset_index(drop=True)
@@ -196,7 +195,7 @@ if uploaded_file is not None:
                         pdf.set_linewidth(0.4)
                         pdf.rect(1.5, 1.5, w - 3, h - 3)
                     
-                    # FIXED: Initializing directly from standard verified base module instantiation 
+                    # FIX: Explicitly updated to reference qrcode module path instance cleanly
                     qr = qrcode.QRCode(box_size=1, border=0)
                     qr.add_data(row_url)
                     qr.make(fit=True)
@@ -235,7 +234,6 @@ if uploaded_file is not None:
                     
                     progress_bar.progress((idx + 1) / total_rows)
                 
-                # Output stable standard bytes stream
                 pdf_output = pdf.output(dest='S')
                 if isinstance(pdf_output, str):
                     st.session_state["pdf_data_buffer"] = pdf_output.encode('latin-1')

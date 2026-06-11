@@ -45,7 +45,7 @@ price_size = st.sidebar.slider("Price Font Size", 12, 24, 16)
 # --- MAIN INTERFACE LAYOUT ---
 st.title("🎟️ Custom SaaS Bulk Price Ticket Generator")
 
-# --- HIGH-PRIORITY DOWNLOAD BUTTON AREA (CRITICAL FIX) ---
+# --- DOWNLOAD AREA ---
 if st.session_state["pdf_data_buffer"] is not None:
     st.info("🎉 Your bulk print tickets portfolio is compiled and ready!")
     st.download_button(
@@ -57,7 +57,7 @@ if st.session_state["pdf_data_buffer"] is not None:
     )
     st.divider()
 
-# --- LIVE SAMPLE PREVIEW WINDOW ---
+# --- LIVE PREVIEW WINDOW ---
 st.subheader("👀 Live Ticket Sample Preview")
 web_font = "Courier New, Courier, monospace" if font_choice == "Courier" else f"{font_choice}, sans-serif"
 preview_border = f"3px solid {primary_color}" if bg_style == "Light Border Box" else "1px solid #ddd"
@@ -110,21 +110,22 @@ if uploaded_file is not None:
         st.rerun()
 
     try:
+        # Load Raw Data
         if uploaded_file.name.endswith('.csv'):
-            df = pd.read_csv(uploaded_file)
-            if len(df.columns) == 1 and ',' in df.columns[0]:
-                uploaded_file.seek(0)
-                df = pd.read_csv(uploaded_file, sep=None, engine='python')
+            df = pd.read_csv(uploaded_file, header=None)
         else:
-            df = pd.read_excel(uploaded_file)
+            df = pd.read_excel(uploaded_file, header=None)
         
-        # FIX: Drop empty spacer columns that don't have valid header text
-        df = df.loc[:, ~df.columns.str.contains('^Unnamed')]
-        df.columns = df.columns.astype(str).str.strip()
+        # FIX: Strip out entirely blank spacer rows and empty margin columns automatically!
+        df = df.dropna(how='all').dropna(axis=1, how='all')
+        
+        # Reset the true column header row dynamically
+        df.columns = df.iloc[0].astype(str).str.strip()
+        df = df[1:].reset_index(drop=True)
         
         mapped_cols = {}
         for col in df.columns:
-            col_lower = col.lower()
+            col_lower = str(col).lower()
             if "sku" in col_lower:
                 mapped_cols["SKU"] = col
             elif "product" in col_lower or "name" in col_lower or "title" in col_lower:
@@ -139,7 +140,7 @@ if uploaded_file is not None:
         
         if missing_targets:
             st.error(f"Execution Halted. Could not auto-detect columns for: {missing_targets}")
-            st.info(f"Columns found inside your file: {list(df.columns)}")
+            st.info(f"Available filtered column labels found: {list(df.columns)}")
         else:
             st.success("✨ Data payload mapped successfully!")
             
@@ -162,6 +163,7 @@ if uploaded_file is not None:
                 w, h = dimensions['w'], dimensions['h']
                 qr_dim = dimensions['qr_size']
                 
+                p_r, p_g, p_b = hex_to_rgb(primary_color)
                 pdf = FPDF(orientation=orient, unit='mm', format=(w, h))
                 pdf.set_margin(0)
                 pdf.set_auto_page_break(False)
@@ -229,10 +231,10 @@ if uploaded_file is not None:
                     
                     progress_bar.progress((idx + 1) / total_rows)
                 
-                # FIX: Save raw bytes directly to permanent session memory
-                st.session_state["pdf_data_buffer"] = pdf.output()
+                # FIX: Build dynamic raw byte buffer stream correctly
+                st.session_state["pdf_data_buffer"] = bytes(pdf.output())
                 st.balloons()
-                st.rerun() # Refresh layout state immediately to trigger the header button!
+                st.rerun()
                 
     except Exception as e:
         st.error(f"Fatal Parser Error: {e}")

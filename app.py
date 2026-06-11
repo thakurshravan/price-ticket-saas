@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import qrcode
+from qrcode.main import QRCode
 from fpdf import FPDF
 import io
 
@@ -115,8 +116,8 @@ if uploaded_file is not None:
                         pdf.set_linewidth(0.4)
                         pdf.rect(1.5, 1.5, w - 3, h - 3)
                     
-                    # Generate QR Code image in memory
-                    qr = qrcode.QRCode(box_size=1, border=0)
+                    # FIX: Explicitly instantiated from our direct QRCode module class reference
+                    qr = QRCode(box_size=1, border=0)
                     qr.add_data(str(row['URL']))
                     qr.make(fit=True)
                     qr_img = qr.make_image(fill_color="black", back_color="white")
@@ -137,7 +138,7 @@ if uploaded_file is not None:
                     current_y = pdf.get_y()
                     pdf.set_text_color(p_r, p_g, p_b)
                     
-                    # 2. SKU Placement (FIX: Added explicit w= and h= positional anchors)
+                    # 2. SKU Placement 
                     pdf.set_font(font_choice, '', size=8)
                     pdf.set_xy(4, max(current_y + 1.2, 12 if bg_style == "Solid Accent Header" else 9))
                     pdf.cell(w=allowed_text_width, h=4, text=f"SKU: {row['SKU']}", align='L')
@@ -145,7 +146,7 @@ if uploaded_file is not None:
                     # 3. Dynamic QR Placement
                     pdf.image(img_buffer, x=w - qr_dim - 4, y=h - qr_dim - 4, w=qr_dim, h=qr_dim)
                     
-                    # 4. Large Price Layout (FIX: Added explicit w= and h= positional anchors)
+                    # 4. Large Price Layout
                     pdf.set_font(font_choice, 'B', size=price_size)
                     pdf.set_xy(4, h - 12)
                     

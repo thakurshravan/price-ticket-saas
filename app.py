@@ -7,14 +7,12 @@ import io
 
 st.set_page_config(page_title="SaaS Bulk Label Generator", layout="wide")
 
-# Initialize Session State for file management resets
 if "file_uploader_key" not in st.session_state:
     st.session_state["file_uploader_key"] = 0
 
-# --- SIDEBAR: SAAS CONFIGURATION & CUSTOMIZATION ---
+# --- SIDEBAR: CONFIGURATION ---
 st.sidebar.header("🎨 Ticket Customization Engine")
 
-# 1. Size Selection (With Manual Customization Toggle)
 SIZE_TEMPLATES = {
     "60x40 mm (Standard Shelf Edge)": {"w": 60, "h": 40, "qr_size": 20},
     "40x50 mm (Hang Tag)": {"w": 40, "h": 50, "qr_size": 18},
@@ -33,7 +31,6 @@ if selected_size == "Custom Size...":
 else:
     dimensions = SIZE_TEMPLATES[selected_size]
 
-# 2. Dynamic Color Customization
 st.sidebar.subheader("Color Palette")
 primary_color = st.sidebar.color_picker("Text & Accent Color", "#000000")
 bg_style = st.sidebar.selectbox("Ticket Background Style", ["Plain White", "Light Border Box", "Solid Accent Header"])
@@ -44,7 +41,6 @@ def hex_to_rgb(hex_str):
 
 p_r, p_g, p_b = hex_to_rgb(primary_color)
 
-# 3. Typography Adjustments
 st.sidebar.subheader("Typography")
 font_choice = st.sidebar.selectbox("Select Font Family", ["Arial", "Helvetica", "Courier"])
 title_size = st.sidebar.slider("Product Name Font Size", 6, 14, 9)
@@ -54,13 +50,9 @@ price_size = st.sidebar.slider("Price Font Size", 12, 24, 16)
 st.title("🎟️ Custom SaaS Bulk Price Ticket Generator")
 st.write("Upload an Excel or CSV file, customize templates on the sidebar, and print dynamic price tickets.")
 
-st.markdown("💡 **Format Requirement:** Your sheet columns must contain: `SKU`, `Product Name`, `Price`, `URL`")
-
-# Clear/Delete file function handler
 def clear_file_callback():
     st.session_state["file_uploader_key"] += 1
 
-# Upload Widget anchored to our dynamic key state tracker
 uploaded_file = st.file_uploader(
     "Upload Product File (.xlsx or .csv)", 
     type=["xlsx", "csv"], 
@@ -68,7 +60,6 @@ uploaded_file = st.file_uploader(
 )
 
 if uploaded_file is not None:
-    # Add a prominent manual delete/clear button right under the file box
     if st.button("🗑️ Clear File & Reset Canvas", on_click=clear_file_callback):
         st.rerun()
 
@@ -81,10 +72,8 @@ if uploaded_file is not None:
         else:
             df = pd.read_excel(uploaded_file)
         
-        # Strip whitespaces from column headers safely
         df.columns = df.columns.astype(str).str.strip()
         
-        # --- ROBUST COLUMN MAPPER ---
         mapped_cols = {}
         for col in df.columns:
             col_lower = col.lower()
@@ -97,13 +86,11 @@ if uploaded_file is not None:
             elif "url" in col_lower or "link" in col_lower or "website" in col_lower:
                 mapped_cols["URL"] = col
 
-        # Verify minimum mandatory targets found
         required_targets = ["SKU", "Product Name", "Price", "URL"]
         missing_targets = [t for t in required_targets if t not in mapped_cols]
         
         if missing_targets:
             st.error(f"Execution Halted. Could not auto-detect columns for: {missing_targets}")
-            st.info(f"Available columns found inside your uploaded file were: {list(df.columns)}")
         else:
             st.success("✨ Data payload mapped successfully!")
             
@@ -136,7 +123,6 @@ if uploaded_file is not None:
                 for idx, row in df.iterrows():
                     pdf.add_page()
                     
-                    # Target Mapped Row Extraction
                     row_sku = str(row[mapped_cols["SKU"]])
                     row_name = str(row[mapped_cols["Product Name"]])
                     row_url = str(row[mapped_cols["URL"]])
@@ -146,17 +132,16 @@ if uploaded_file is not None:
                         pdf.set_fill_color(p_r, p_g, p_b)
                         pdf.rect(0, 0, w, 10, 'F')
                         text_r, text_g, text_b = 255, 255, 255
-                        start_y = 2.5
+                        start_y = 1.5
                     else:
                         text_r, text_g, text_b = p_r, p_g, p_b
-                        start_y = 3.5
+                        start_y = 2.5
                         
                     if bg_style == "Light Border Box":
                         pdf.set_draw_color(p_r, p_g, p_b)
                         pdf.set_linewidth(0.4)
                         pdf.rect(1.5, 1.5, w - 3, h - 3)
                     
-                    # Generate QR Code image in memory safely
                     qr = QRCode(box_size=1, border=0)
                     qr.add_data(row_url)
                     qr.make(fit=True)
@@ -166,38 +151,37 @@ if uploaded_file is not None:
                     qr_img.save(img_buffer, format="PNG")
                     img_buffer.seek(0)
                     
-                    # 1. Title Processing
+                    allowed_text_width = w - qr_dim - 8
+                    
+                    # 1. Product Name Rendering (FIXED: Swapped out .text for ultra-stable .cell)
                     pdf.set_text_color(text_r, text_g, text_b)
                     pdf.set_font(font_choice, 'B', size=title_size)
+                    pdf.set_xy(4, start_y)
                     
-                    # FIX: Explicitly added text= parameters to handle strings cleanly
-                    if len(row_name) > 24:
-                        line1 = row_name[:24]
-                        line2 = row_name[24:45] + "..." if len(row_name) > 45 else row_name[24:]
-                        pdf.text(x=4, y=start_y + 3, text=line1)
-                        pdf.text(x=4, y=start_y + 7, text=line2)
-                    else:
-                        pdf.text(x=4, y=start_y + 4, text=row_name)
+                    # Clean title truncation to prevent boundary overflows
+                    short_name = row_name[:40] + "..." if len(row_name) > 40 else row_name
+                    pdf.cell(allowed_text_width, 4, text=short_name, align='L')
                     
                     pdf.set_text_color(p_r, p_g, p_b)
                     
-                    # 2. SKU Processing (FIX: Explicit layout x, y, and text naming)
+                    # 2. SKU Rendering (FIXED)
                     pdf.set_font(font_choice, '', size=8)
-                    sku_y = 15 if bg_style == "Solid Accent Header" else 13
-                    pdf.text(x=4, y=sku_y, text=f"SKU: {row_sku}")
+                    pdf.set_xy(4, start_y + 6)
+                    pdf.cell(allowed_text_width, 4, text=f"SKU: {row_sku}", align='L')
                     
-                    # 3. Dynamic QR Code placement
+                    # 3. Barcode Placement
                     pdf.image(img_buffer, x=w - qr_dim - 4, y=h - qr_dim - 4, w=qr_dim, h=qr_dim)
                     
-                    # 4. Large Price Layout (FIX: Explicit layout x, y, and text naming)
+                    # 4. Price Rendering (FIXED)
                     pdf.set_font(font_choice, 'B', size=price_size)
+                    pdf.set_xy(4, h - 10)
                     try:
                         price_val = float(raw_price)
                         price_text = f"AED {price_val:.2f}"
                     except:
                         price_text = f"AED {raw_price}"
                         
-                    pdf.text(x=4, y=h - 5, text=price_text)
+                    pdf.cell(allowed_text_width, 6, text=price_text, align='L')
                     
                     progress_bar.progress((idx + 1) / total_rows)
                 

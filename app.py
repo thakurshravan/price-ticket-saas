@@ -24,7 +24,7 @@ def generate_qr_base64(url):
     return base64.b64encode(buffered.getvalue()).decode()
 
 # --- SIDEBAR: CONFIGURATION ---
-st.sidebar.header("🎨 Ticket Customization Engine")
+st.sidebar.header("🎨 Advanced Customization Engine")
 
 SIZE_TEMPLATES = {
     "60x40 mm (Standard Shelf Edge)": {"w": 60, "h": 40, "qr_size": 18},
@@ -44,13 +44,16 @@ if selected_size == "Custom Size...":
 else:
     dimensions = SIZE_TEMPLATES[selected_size]
 
-primary_color = st.sidebar.color_picker("Text & Accent Color", "#000000")
+primary_color = st.sidebar.color_picker("Text & Accent Color", "#1E1E1E")
 bg_style = st.sidebar.selectbox("Ticket Background Style", ["Plain White", "Light Border Box", "Solid Accent Header"])
 
 st.sidebar.subheader("Typography")
 font_choice = st.sidebar.selectbox("Select Font Family", ["Arial", "Helvetica", "Courier"])
 title_size = st.sidebar.slider("Product Name Font Size", 8, 20, 11)
 price_size = st.sidebar.slider("Price Font Size", 14, 32, 18)
+
+# Add control to toggle discount lines
+show_was_price = st.sidebar.checkbox("Show Strikethrough 'Was' Price Row", value=True)
 
 # --- GLOBAL FONT CONFIGURATION ---
 web_font = "Courier New, monospace" if font_choice == "Courier" else f"{font_choice}, sans-serif"
@@ -61,9 +64,11 @@ st.write("Upload a file, customize styles, and print directly onto standard A4 s
 
 # --- LIVE PREVIEW WINDOW ---
 st.subheader("👀 Live Ticket Sample Preview")
-preview_border = f"2px solid {primary_color}" if bg_style == "Light Border Box" or bg_style == "Solid Accent Header" else "1px solid #ddd"
+preview_border = f"2px solid {primary_color}" if bg_style == "Light Border Box" or bg_style == "Solid Accent Header" else "1px dashed #ccc"
 preview_header_bg = primary_color if bg_style == "Solid Accent Header" else "transparent"
 preview_header_text = "#ffffff" if bg_style == "Solid Accent Header" else primary_color
+
+was_price_html = f'<div style="text-decoration: line-through; font-size: {price_size - 4}pt; color: #888; line-height: 1;">AED 879.00</div>' if show_was_price else ''
 
 preview_html = f"""
 <div style="
@@ -71,24 +76,29 @@ preview_html = f"""
     height: {dimensions['h'] * 5}px; 
     border: {preview_border}; 
     background-color: #ffffff; 
-    border-radius: 6px; 
+    border-radius: 4px; 
     position: relative; 
     font-family: {web_font}; 
     overflow: hidden;
     box-shadow: 0 4px 10px rgba(0,0,0,0.15);
     margin-bottom: 20px;
 ">
-    <div style="background-color: {preview_header_bg}; padding: 6px; height: 35%; box-sizing: border-box;">
+    <div style="background-color: {preview_header_bg}; padding: 8px; height: 35%; box-sizing: border-box;">
         <div style="color: {preview_header_text}; font-size: {title_size + 2}px; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
             Sample Product Name
         </div>
     </div>
-    <div style="position: absolute; top: 45%; left: 8px; color: {primary_color}; font-size: 11px;">
+    <div style="position: absolute; top: 45%; left: 8px; color: #555; font-size: 11px;">
         SKU: J705466
     </div>
-    <div style="position: absolute; bottom: 8px; left: 8px; color: {primary_color}; font-size: {price_size + 4}px; font-weight: bold;">
-        AED 799.00
+    
+    <div style="position: absolute; bottom: 8px; left: 8px;">
+        {was_price_html}
+        <div style="color: {primary_color}; font-size: {price_size + 4}px; font-weight: bold; line-height: 1.1;">
+            AED 799.00
+        </div>
     </div>
+    
     <div style="position: absolute; bottom: 8px; right: 8px; width: {dimensions['qr_size'] * 4.5}px; height: {dimensions['qr_size'] * 4.5}px; background-image: url('https://upload.wikimedia.org/wikipedia/commons/d/d0/QR_code_for_QR_Code_tutorial_images_section.png'); background-size: cover; border: 1px solid #eee;"></div>
 </div>
 """
@@ -144,7 +154,7 @@ if uploaded_file is not None:
             st.dataframe(df.head(3), use_container_width=True)
 
             # --- GENERATION ENGINE ---
-            card_border = f"2px solid {primary_color}" if bg_style == "Light Border Box" or bg_style == "Solid Accent Header" else "1px solid #ddd"
+            card_border = f"2px solid {primary_color}" if bg_style == "Light Border Box" or bg_style == "Solid Accent Header" else "1px dashed #ccc"
             header_bg = primary_color if bg_style == "Solid Accent Header" else "transparent"
             header_text_color = "#ffffff" if bg_style == "Solid Accent Header" else primary_color
 
@@ -153,10 +163,14 @@ if uploaded_file is not None:
                 try:
                     price_val = float(row[mapped_cols["Price"]])
                     price_text = f"AED {price_val:.2f}"
+                    was_price_text = f"AED {price_val * 1.15:.2f}" # Simulated Was Price row calculation
                 except:
                     price_text = f"AED {row[mapped_cols['Price']]}"
+                    was_price_text = ""
 
                 qr_b64 = generate_qr_base64(str(row[mapped_cols["URL"]]))
+                
+                was_row_inner = f'<div style="text-decoration: line-through; font-size: {price_size - 4}pt; color: #888; margin-bottom: 1px;">{was_price_text}</div>' if (show_was_price and was_price_text) else ''
 
                 html_cards += f"""
                 <div class="ticket-card" style="
@@ -178,12 +192,17 @@ if uploaded_file is not None:
                             {row[mapped_cols["Product Name"]]}
                         </div>
                     </div>
-                    <div style="position: absolute; top: 42%; left: 6px; color: {primary_color}; font-size: 8pt;">
+                    <div style="position: absolute; top: 42%; left: 6px; color: #555; font-size: 8pt;">
                         SKU: {row[mapped_cols["SKU"]]}
                     </div>
-                    <div style="position: absolute; bottom: 6px; left: 6px; color: {primary_color}; font-size: {price_size}pt; font-weight: bold;">
-                        {price_text}
+                    
+                    <div style="position: absolute; bottom: 6px; left: 6px; line-height: 1;">
+                        {was_row_inner}
+                        <div style="color: {primary_color}; font-size: {price_size}pt; font-weight: bold;">
+                            {price_text}
+                        </div>
                     </div>
+                    
                     <img src="data:image/png;base64,{qr_b64}" style="
                         position: absolute;
                         bottom: 4px;

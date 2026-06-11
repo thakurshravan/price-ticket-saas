@@ -90,7 +90,6 @@ preview_html = f"""
     <div style="position: absolute; bottom: 8px; right: 8px; width: {dimensions['qr_size'] * 4.5}px; height: {dimensions['qr_size'] * 4.5}px; background-image: url('https://upload.wikimedia.org/wikipedia/commons/d/d0/QR_code_for_QR_Code_tutorial_images_section.png'); background-size: cover; border: 1px solid #eee;"></div>
 </div>
 """
-# FIXED: Changed unsafe_allowed_html=True to unsafe_allow_html=True below
 st.markdown(preview_html, unsafe_allow_html=True)
 st.divider()
 
@@ -196,7 +195,13 @@ if uploaded_file is not None:
                         pdf.set_linewidth(0.4)
                         pdf.rect(1.5, 1.5, w - 3, h - 3)
                     
-                    qr = qrcode.QRCode(box_size=1, border=0)
+                    # FIXED: Added strong box scaling parameters to ensure thick high-contrast pixels
+                    qr = qrcode.QRCode(
+                        version=1,
+                        error_correction=qrcode.constants.ERROR_CORRECT_L,
+                        box_size=10, 
+                        border=1
+                    )
                     qr.add_data(row_url)
                     qr.make(fit=True)
                     qr_img = qr.make_image(fill_color="black", back_color="white")

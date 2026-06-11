@@ -36,14 +36,13 @@ bg_style = st.sidebar.selectbox("Ticket Background Style", ["Plain White", "Ligh
 
 st.sidebar.subheader("Typography")
 font_choice = st.sidebar.selectbox("Select Font Family", ["Arial", "Helvetica", "Courier"])
-title_size = st.sidebar.slider("Product Name Font Size", 8, 20, 12)
-price_size = st.sidebar.slider("Price Font Size", 14, 32, 20)
+title_size = st.sidebar.slider("Product Name Font Size", 8, 20, 11)
+price_size = st.sidebar.slider("Price Font Size", 14, 32, 18)
 
 # --- MAIN INTERFACE LAYOUT ---
 st.title("🎟️ Custom SaaS Bulk Price Ticket Generator")
 st.write("Upload a file, customize styles, and print directly onto standard A4 sticker sheets.")
 
-# Helper function to generate QR codes as Base64 strings for raw HTML display
 def generate_qr_base64(url):
     qr = qrcode.QRCode(version=1, box_size=4, border=1)
     qr.add_data(url)
@@ -101,17 +100,13 @@ if uploaded_file is not None:
             st.success("✨ Data payload mapped successfully!")
             st.dataframe(df.head(3), use_container_width=True)
 
-            # --- GENERATE PRINT SHEET CONTAINER ---
-            st.subheader("🖨️ Generated Print Canvas")
-            st.info("💡 **How to Print:** Click the link below to open the print layout window, then press **Ctrl + P** (or Cmd + P) and select **'Save as PDF'** or choose your **A4 Printer**!")
-
-            # Build CSS for A4 Grid configuration
+            # --- CSS & GRID CONFIGURATION AREA ---
             web_font = "Courier New, monospace" if font_choice == "Courier" else f"{font_choice}, sans-serif"
             card_border = f"2px solid {primary_color}" if bg_style == "Light Border Box" else "1px solid #ddd"
             header_bg = primary_color if bg_style == "Solid Accent Header" else "transparent"
             header_text_color = "#ffffff" if bg_style == "Solid Accent Header" else primary_color
 
-            # Generate HTML grid cards loop
+            # Generate and format grid labels loop
             html_cards = ""
             for idx, row in df.iterrows():
                 try:
@@ -135,6 +130,7 @@ if uploaded_file is not None:
                     display: inline-block;
                     margin: 1mm;
                     vertical-align: top;
+                    text-align: left;
                 ">
                     <div style="background-color: {header_bg}; padding: 6px; height: 35%; box-sizing: border-box;">
                         <div style="color: {header_text_color}; font-size: {title_size}pt; font-weight: bold; line-height: 1.1; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
@@ -157,46 +153,42 @@ if uploaded_file is not None:
                 </div>
                 """
 
-            # Full printable page layout document shell template
-            full_print_html = f"""
-            <!DOCTYPE html>
+            # FIX: Secure JavaScript Printing trigger component embedded safely inside the primary application frame
+            st.subheader("🖨️ Printable Document Feed")
+            
+            iframe_content = f"""
             <html>
             <head>
-                <title>Print Price Tickets Portfolio</title>
                 <style>
-                    body {{ margin: 0; padding: 0; background: #f0f2f5; }}
+                    body {{ margin: 0; padding: 0; font-family: sans-serif; text-align: center; background: #fafafa; }}
+                    .print-btn {{
+                        background-color: #25d366; color: white; border: none; padding: 12px 30px;
+                        font-size: 16px; font-weight: bold; border-radius: 6px; cursor: pointer;
+                        box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin: 15px auto; display: block;
+                    }}
+                    .print-btn:hover {{ background-color: #1ebe57; }}
                     .a4-page {{
-                        width: 210mm;
-                        min-height: 297mm;
-                        padding: 10mm;
-                        margin: 10mm auto;
-                        background: white;
-                        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-                        box-sizing: border-box;
+                        width: 210mm; padding: 5mm; margin: 0 auto;
+                        background: white; box-sizing: border-box; text-align: left;
                     }}
                     @media print {{
+                        .print-btn {{ display: none !important; }}
                         body {{ background: white; }}
-                        .a4-page {{ margin: 0; padding: 10mm; box-shadow: none; page-break-after: always; }}
-                        .no-print {{ display: none; }}
+                        .a4-page {{ padding: 0; margin: 0; width: 100%; }}
                     }}
                 </style>
             </head>
             <body>
-                <div class="no-print" style="background: #333; color: #fff; padding: 15px; text-align: center; font-family: sans-serif;">
-                    <button onclick="window.print()" style="padding: 10px 20px; font-size: 16px; font-weight: bold; cursor: pointer; background: #00cc66; border: none; color: white; border-radius: 4px;">📂 Click Here to Open Print Interface</button>
-                    <p style="margin: 5px 0 0 0; font-size: 12px; color: #ccc;">Make sure your print layout orientation matches your target choices!</p>
-                </div>
+                <button class="print-btn" onclick="window.print()">🖨️ CLICK HERE TO PRINT BULK SHEET</button>
                 <div class="a4-page">
                     {html_cards}
                 </div>
             </body>
             </html>
             """
-
-            # Embed inside a web tab hyperlink using components
-            b64_print = base64.b64encode(full_print_html.encode()).decode()
-            href = f'<a href="data:text/html;base64,{b64_print}" target="_blank" style="text-decoration: none;"><div style="background-color: #25d366; color: white; text-align: center; padding: 15px; font-weight: bold; font-size: 18px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.15); margin-bottom: 25px;">🌐 OPEN PRINT PORTFOLIO IN NEW TAB</div></a>'
-            st.markdown(href, unsafe_allow_html=True)
+            
+            # Display inline without changing tabs to bypass security filters completely
+            st.components.v1.html(iframe_content, height=800, scrolling=True)
 
     except Exception as e:
         st.error(f"Fatal Parser Error: {e}")

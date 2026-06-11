@@ -52,13 +52,15 @@ font_choice = st.sidebar.selectbox("Select Font Family", ["Arial", "Helvetica", 
 title_size = st.sidebar.slider("Product Name Font Size", 8, 20, 11)
 price_size = st.sidebar.slider("Price Font Size", 14, 32, 18)
 
+# --- GLOBAL FONT CONFIGURATION ---
+web_font = "Courier New, monospace" if font_choice == "Courier" else f"{font_choice}, sans-serif"
+
 # --- MAIN INTERFACE LAYOUT ---
 st.title("🎟️ Custom SaaS Bulk Price Ticket Generator")
 st.write("Upload a file, customize styles, and print directly onto standard A4 sticker sheets.")
 
 # --- LIVE PREVIEW WINDOW ---
 st.subheader("👀 Live Ticket Sample Preview")
-web_font = "Courier New, monospace" if font_choice == "Courier" else f"{font_choice}, sans-serif"
 preview_border = f"2px solid {primary_color}" if bg_style == "Light Border Box" or bg_style == "Solid Accent Header" else "1px solid #ddd"
 preview_header_bg = primary_color if bg_style == "Solid Accent Header" else "transparent"
 preview_header_text = "#ffffff" if bg_style == "Solid Accent Header" else primary_color
@@ -194,7 +196,6 @@ if uploaded_file is not None:
 
             st.subheader("🖨️ Printable Document Feed")
             
-            # FIXED: Removed st.rerun() loop trigger so page state handles sync naturally
             iframe_content = f"""
             <html>
             <head>

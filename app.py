@@ -55,12 +55,21 @@ uploaded_file = st.file_uploader("Upload Product File (.xlsx or .csv)", type=["x
 
 if uploaded_file is not None:
     try:
+        # Smart Data Loader with separator fallback auto-detection
         if uploaded_file.name.endswith('.csv'):
+            # First attempt with default comma
             df = pd.read_csv(uploaded_file)
+            
+            # If everything mashed into one column, fallback to try semicolon separator
+            if len(df.columns) == 1 and ',' in df.columns[0]:
+                uploaded_file.seek(0)
+                df = pd.read_csv(uploaded_file, sep=None, engine='python')
         else:
             df = pd.read_excel(uploaded_file)
         
+        # Clean whitespaces out of headers
         df.columns = df.columns.str.strip()
+        
         st.success("✨ Data payload imported successfully!")
         
         col1, col2 = st.columns([1, 2])
@@ -75,6 +84,7 @@ if uploaded_file is not None:
         
         if missing_cols:
             st.error(f"Execution Halted. Missing columns inside File: {missing_cols}")
+            st.info(f"Detected columns inside your file were: {list(df.columns)}")
         else:
             if st.button("🚀 Render Custom Tickets Portfolio"):
                 
@@ -91,7 +101,7 @@ if uploaded_file is not None:
                 for idx, row in df.iterrows():
                     pdf.add_page()
                     
-                    # Background Design Style Logic
+                    # Layout theme selections
                     if bg_style == "Solid Accent Header":
                         pdf.set_fill_color(p_r, p_g, p_b)
                         pdf.rect(0, 0, w, 10, 'F')
@@ -116,33 +126,27 @@ if uploaded_file is not None:
                     qr_img.save(img_buffer, format="PNG")
                     img_buffer.seek(0)
                     
-                    # --- FIXED COUPLING BOUNDARY CRITICAL FOR QR PROXIMITY ---
-                    # Strict text-zone calculation ensuring text stops completely before the QR box boundaries
+                    # Text box partition logic
                     allowed_text_width = w - qr_dim - 10
                     
                     # 1. Output wrapped Product Title
                     pdf.set_text_color(text_r, text_g, text_b)
                     pdf.set_font(font_choice, 'B', size=title_size)
                     pdf.set_xy(4, start_y)
-                    
-                    # Text wraps cleanly down the left boundary line
                     pdf.multi_cell(allowed_text_width, 3.8, text=str(row['Product Name']), align='L')
                     
-                    # Track where the text block ended so elements don't collide
                     current_y = pdf.get_y()
-                    
-                    # Reset text color back to user accent color choice
                     pdf.set_text_color(p_r, p_g, p_b)
                     
-                    # 2. SKU Placement (Positions right underneath the product title)
+                    # 2. SKU Placement
                     pdf.set_font(font_choice, '', size=8)
                     pdf.set_xy(4, max(current_y + 1.2, 12 if bg_style == "Solid Accent Header" else 9))
                     pdf.cell(allowed_text_width, 4, text=f"SKU: {row['SKU']}", align='L')
                     
-                    # 3. Dynamic QR Placement (Anchored safely to the absolute bottom right)
+                    # 3. Dynamic QR Placement
                     pdf.image(img_buffer, x=w - qr_dim - 4, y=h - qr_dim - 4, w=qr_dim, h=qr_dim)
                     
-                    # 4. Large Price Layout (Anchored cleanly to the bottom left)
+                    # 4. Large Price Layout
                     pdf.set_font(font_choice, 'B', size=price_size)
                     pdf.set_xy(4, h - 12)
                     

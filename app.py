@@ -92,8 +92,9 @@ if uploaded_file is not None:
                 w, h = dimensions['w'], dimensions['h']
                 qr_dim = dimensions['qr_size']
                 
+                # FIX: Set auto_page_break=False directly during FPDF engine instantiation
                 pdf = FPDF(orientation=orient, unit='mm', format=(w, h))
-                pdf.set_auto_page_break(auto=False, margin=0)
+                pdf.set_auto_page_break(False, margin=0)
                 
                 progress_bar = st.progress(0)
                 total_rows = len(df)
@@ -116,7 +117,7 @@ if uploaded_file is not None:
                         pdf.set_linewidth(0.4)
                         pdf.rect(1.5, 1.5, w - 3, h - 3)
                     
-                    # FIX: Explicitly instantiated from our direct QRCode module class reference
+                    # Explicitly instantiated from our direct QRCode module class reference
                     qr = QRCode(box_size=1, border=0)
                     qr.add_data(str(row['URL']))
                     qr.make(fit=True)

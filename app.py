@@ -9,6 +9,20 @@ st.set_page_config(page_title="SaaS Bulk Label Generator", layout="wide")
 if "file_uploader_key" not in st.session_state:
     st.session_state["file_uploader_key"] = 0
 
+# --- GLOBAL UTILITY MATH (FIXED: Moved up so both preview and printer can sync) ---
+def hex_to_rgb(hex_str):
+    hex_str = hex_str.lstrip('#')
+    return tuple(int(hex_str[i:i+2], 16) for i in (0, 2, 4))
+
+def generate_qr_base64(url):
+    qr = qrcode.QRCode(version=1, box_size=4, border=1)
+    qr.add_data(url)
+    qr.make(fit=True)
+    img = qr.make_image(fill_color="black", back_color="white")
+    buffered = io.BytesIO()
+    img.save(buffered, format="PNG")
+    return base64.b64encode(buffered.getvalue()).decode()
+
 # --- SIDEBAR: CONFIGURATION ---
 st.sidebar.header("🎨 Ticket Customization Engine")
 
@@ -30,7 +44,6 @@ if selected_size == "Custom Size...":
 else:
     dimensions = SIZE_TEMPLATES[selected_size]
 
-st.sidebar.subheader("Color Palette")
 primary_color = st.sidebar.color_picker("Text & Accent Color", "#000000")
 bg_style = st.sidebar.selectbox("Ticket Background Style", ["Plain White", "Light Border Box", "Solid Accent Header"])
 
@@ -43,14 +56,42 @@ price_size = st.sidebar.slider("Price Font Size", 14, 32, 18)
 st.title("🎟️ Custom SaaS Bulk Price Ticket Generator")
 st.write("Upload a file, customize styles, and print directly onto standard A4 sticker sheets.")
 
-def generate_qr_base64(url):
-    qr = qrcode.QRCode(version=1, box_size=4, border=1)
-    qr.add_data(url)
-    qr.make(fit=True)
-    img = qr.make_image(fill_color="black", back_color="white")
-    buffered = io.BytesIO()
-    img.save(buffered, format="PNG")
-    return base64.b64encode(buffered.getvalue()).decode()
+# --- LIVE PREVIEW WINDOW (FIXED: Full styling sync implemented) ---
+st.subheader("👀 Live Ticket Sample Preview")
+web_font = "Courier New, monospace" if font_choice == "Courier" else f"{font_choice}, sans-serif"
+preview_border = f"2px solid {primary_color}" if bg_style == "Light Border Box" or bg_style == "Solid Accent Header" else "1px solid #ddd"
+preview_header_bg = primary_color if bg_style == "Solid Accent Header" else "transparent"
+preview_header_text = "#ffffff" if bg_style == "Solid Accent Header" else primary_color
+
+preview_html = f"""
+<div style="
+    width: {dimensions['w'] * 5}px; 
+    height: {dimensions['h'] * 5}px; 
+    border: {preview_border}; 
+    background-color: #ffffff; 
+    border-radius: 6px; 
+    position: relative; 
+    font-family: {web_font}; 
+    overflow: hidden;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+    margin-bottom: 20px;
+">
+    <div style="background-color: {preview_header_bg}; padding: 6px; height: 35%; box-sizing: border-box;">
+        <div style="color: {preview_header_text}; font-size: {title_size + 2}px; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+            Sample Product Name
+        </div>
+    </div>
+    <div style="position: absolute; top: 45%; left: 8px; color: {primary_color}; font-size: 11px;">
+        SKU: J705466
+    </div>
+    <div style="position: absolute; bottom: 8px; left: 8px; color: {primary_color}; font-size: {price_size + 4}px; font-weight: bold;">
+        AED 799.00
+    </div>
+    <div style="position: absolute; bottom: 8px; right: 8px; width: {dimensions['qr_size'] * 4.5}px; height: {dimensions['qr_size'] * 4.5}px; background-image: url('https://upload.wikimedia.org/wikipedia/commons/d/d0/QR_code_for_QR_Code_tutorial_images_section.png'); background-size: cover; border: 1px solid #eee;"></div>
+</div>
+"""
+st.markdown(preview_html, unsafe_allow_html=True)
+st.divider()
 
 # --- DATA IMPORT ENGINE ---
 def clear_file_callback():
@@ -100,13 +141,11 @@ if uploaded_file is not None:
             st.success("✨ Data payload mapped successfully!")
             st.dataframe(df.head(3), use_container_width=True)
 
-            # --- CSS & GRID CONFIGURATION AREA ---
-            web_font = "Courier New, monospace" if font_choice == "Courier" else f"{font_choice}, sans-serif"
-            card_border = f"2px solid {primary_color}" if bg_style == "Light Border Box" else "1px solid #ddd"
+            # --- GENERATION ENGINE ---
+            card_border = f"2px solid {primary_color}" if bg_style == "Light Border Box" or bg_style == "Solid Accent Header" else "1px solid #ddd"
             header_bg = primary_color if bg_style == "Solid Accent Header" else "transparent"
             header_text_color = "#ffffff" if bg_style == "Solid Accent Header" else primary_color
 
-            # Generate and format grid labels loop
             html_cards = ""
             for idx, row in df.iterrows():
                 try:
@@ -153,7 +192,6 @@ if uploaded_file is not None:
                 </div>
                 """
 
-            # FIX: Secure JavaScript Printing trigger component embedded safely inside the primary application frame
             st.subheader("🖨️ Printable Document Feed")
             
             iframe_content = f"""
@@ -186,8 +224,6 @@ if uploaded_file is not None:
             </body>
             </html>
             """
-            
-            # Display inline without changing tabs to bypass security filters completely
             st.components.v1.html(iframe_content, height=800, scrolling=True)
 
     except Exception as e:

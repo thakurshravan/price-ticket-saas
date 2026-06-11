@@ -19,7 +19,6 @@ SIZE_TEMPLATES = {
 
 selected_size = st.sidebar.selectbox("1. Select Target Ticket Size", list(SIZE_TEMPLATES.keys()))
 
-# Manual input handling if "Custom Size..." is selected
 if selected_size == "Custom Size...":
     st.sidebar.markdown("📐 **Enter Manual Dimensions (in mm):**")
     custom_w = st.sidebar.number_input("Ticket Width (mm)", min_value=10, max_value=300, value=70, step=1)
@@ -43,7 +42,7 @@ p_r, p_g, p_b = hex_to_rgb(primary_color)
 # 3. Typography Adjustments
 st.sidebar.subheader("Typography")
 font_choice = st.sidebar.selectbox("Select Font Family", ["Arial", "Helvetica", "Courier"])
-title_size = st.sidebar.slider("Product Name Font Size", 8, 14, 10)
+title_size = st.sidebar.slider("Product Name Font Size", 6, 14, 9)
 price_size = st.sidebar.slider("Price Font Size", 12, 24, 16)
 
 # --- MAIN INTERFACE ---
@@ -56,37 +55,32 @@ uploaded_file = st.file_uploader("Upload Product File (.xlsx or .csv)", type=["x
 
 if uploaded_file is not None:
     try:
-        # Smart Data Loader based on file extension
         if uploaded_file.name.endswith('.csv'):
             df = pd.read_csv(uploaded_file)
         else:
             df = pd.read_excel(uploaded_file)
         
-        # Strip trailing spaces from column names
         df.columns = df.columns.str.strip()
-        
         st.success("✨ Data payload imported successfully!")
         
-        # UI Previews
         col1, col2 = st.columns([1, 2])
         with col1:
             st.metric(label="Total Tickets to Process", value=len(df))
         with col2:
-            st.write("Data Preview (Cleaned Columns):")
+            st.write("Data Preview:")
             st.dataframe(df.head(3), height=120)
         
-        # Validation checks
         required_cols = ["SKU", "Product Name", "Price", "URL"]
         missing_cols = [col for col in required_cols if col not in df.columns]
         
         if missing_cols:
             st.error(f"Execution Halted. Missing columns inside File: {missing_cols}")
-            st.info(f"Detected columns inside your file were: {list(df.columns)}")
         else:
             if st.button("🚀 Render Custom Tickets Portfolio"):
                 
                 orient = 'L' if dimensions['w'] > dimensions['h'] else 'P'
                 w, h = dimensions['w'], dimensions['h']
+                qr_dim = dimensions['qr_size']
                 
                 pdf = FPDF(orientation=orient, unit='mm', format=(w, h))
                 pdf.set_auto_page_break(auto=False, margin=0)
@@ -100,10 +94,12 @@ if uploaded_file is not None:
                     # Background Design Style Logic
                     if bg_style == "Solid Accent Header":
                         pdf.set_fill_color(p_r, p_g, p_b)
-                        pdf.rect(0, 0, w, 12, 'F')
+                        pdf.rect(0, 0, w, 10, 'F')
                         text_r, text_g, text_b = 255, 255, 255
+                        start_y = 2.5
                     else:
                         text_r, text_g, text_b = p_r, p_g, p_b
+                        start_y = 3.5
                         
                     if bg_style == "Light Border Box":
                         pdf.set_draw_color(p_r, p_g, p_b)
@@ -120,24 +116,33 @@ if uploaded_file is not None:
                     qr_img.save(img_buffer, format="PNG")
                     img_buffer.seek(0)
                     
-                    # 1. Product Title Text
+                    # --- CORE CANVAS DRAWINGS WITH AUTOWRAP PROTECTION ---
+                    # Available text space calculation (Total width minus padding and QR code boundary)
+                    allowed_text_width = w - qr_dim - 8
+                    
+                    # 1. Output wrapped Product Title
                     pdf.set_text_color(text_r, text_g, text_b)
                     pdf.set_font(font_choice, 'B', size=title_size)
-                    pdf.set_xy(4, 3.5)
-                    pdf.cell(w - 8, 5, text=str(row['Product Name'])[:25], new_x="LMARGIN", new_y="NEXT", align='L')
+                    pdf.set_xy(4, start_y)
                     
+                    # Using multi_cell instead of cell to automatically manage longer names
+                    pdf.multi_cell(allowed_text_width, 4, text=str(row['Product Name']), align='L')
+                    
+                    # Track where the text block ended so elements don't collide
+                    current_y = pdf.get_y()
+                    
+                    # Reset text color back to user accent color choice
                     pdf.set_text_color(p_r, p_g, p_b)
                     
-                    # 2. SKU Placement
+                    # 2. SKU Placement (safely positioned 1.5mm right underneath the text box output)
                     pdf.set_font(font_choice, '', size=8)
-                    pdf.set_xy(4, 11 if bg_style == "Solid Accent Header" else 9)
-                    pdf.cell(w - 8, 4, text=f"SKU: {row['SKU']}", new_x="LMARGIN", new_y="NEXT", align='L')
+                    pdf.set_xy(4, max(current_y + 1.5, 12 if bg_style == "Solid Accent Header" else 9))
+                    pdf.cell(allowed_text_width, 4, text=f"SKU: {row['SKU']}", align='L')
                     
-                    # 3. Dynamic QR Placement (Anchored perfectly to bottom right corner)
-                    qr_dim = dimensions['qr_size']
+                    # 3. Dynamic QR Placement (Anchored to the absolute bottom right)
                     pdf.image(img_buffer, x=w - qr_dim - 4, y=h - qr_dim - 4, w=qr_dim, h=qr_dim)
                     
-                    # 4. Large Price Layout
+                    # 4. Large Price Layout (Anchored to the bottom left)
                     pdf.set_font(font_choice, 'B', size=price_size)
                     pdf.set_xy(4, h - 12)
                     
@@ -147,15 +152,14 @@ if uploaded_file is not None:
                     except:
                         price_text = f"AED {row['Price']}"
                         
-                    pdf.cell(w - qr_dim - 8, 8, text=price_text, align='L')
+                    pdf.cell(allowed_text_width, 8, text=price_text, align='L')
                     
                     progress_bar.progress((idx + 1) / total_rows)
                 
                 pdf_output = pdf.output()
-                
                 st.balloons()
                 st.download_button(
-                    label="📥 Download Print-Ready Bulk PDF",
+                    label="📥 Download Clean Layout PDF",
                     data=pdf_output,
                     file_name="bulk_custom_tickets.pdf",
                     mime="application/pdf"

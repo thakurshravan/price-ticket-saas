@@ -116,10 +116,8 @@ if uploaded_file is not None:
         else:
             df = pd.read_excel(uploaded_file, header=None)
         
-        # FIX: Strip out entirely blank spacer rows and empty margin columns automatically!
+        # Clean up empty headers/rows
         df = df.dropna(how='all').dropna(axis=1, how='all')
-        
-        # Reset the true column header row dynamically
         df.columns = df.iloc[0].astype(str).str.strip()
         df = df[1:].reset_index(drop=True)
         
@@ -140,7 +138,6 @@ if uploaded_file is not None:
         
         if missing_targets:
             st.error(f"Execution Halted. Could not auto-detect columns for: {missing_targets}")
-            st.info(f"Available filtered column labels found: {list(df.columns)}")
         else:
             st.success("✨ Data payload mapped successfully!")
             
@@ -162,6 +159,10 @@ if uploaded_file is not None:
                 orient = 'L' if dimensions['w'] > dimensions['h'] else 'P'
                 w, h = dimensions['w'], dimensions['h']
                 qr_dim = dimensions['qr_size']
+                
+                def hex_to_rgb(hex_str):
+                    hex_str = hex_str.lstrip('#')
+                    return tuple(int(hex_str[i:i+2], 16) for i in (0, 2, 4))
                 
                 p_r, p_g, p_b = hex_to_rgb(primary_color)
                 pdf = FPDF(orientation=orient, unit='mm', format=(w, h))
@@ -231,8 +232,13 @@ if uploaded_file is not None:
                     
                     progress_bar.progress((idx + 1) / total_rows)
                 
-                # FIX: Build dynamic raw byte buffer stream correctly
-                st.session_state["pdf_data_buffer"] = bytes(pdf.output())
+                # FIX: Using direct string buffer serialization destinations safely
+                pdf_output = pdf.output(dest='S')
+                if isinstance(pdf_output, str):
+                    st.session_state["pdf_data_buffer"] = pdf_output.encode('latin-1')
+                else:
+                    st.session_state["pdf_data_buffer"] = pdf_output
+                
                 st.balloons()
                 st.rerun()
                 

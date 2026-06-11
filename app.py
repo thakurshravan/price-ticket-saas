@@ -9,6 +9,8 @@ st.set_page_config(page_title="SaaS Bulk Label Generator", layout="wide")
 
 if "file_uploader_key" not in st.session_state:
     st.session_state["file_uploader_key"] = 0
+if "pdf_data_buffer" not in st.session_state:
+    st.session_state["pdf_data_buffer"] = None
 
 # --- SIDEBAR: CONFIGURATION ---
 st.sidebar.header("🎨 Ticket Customization Engine")
@@ -40,23 +42,28 @@ font_choice = st.sidebar.selectbox("Select Font Family", ["Arial", "Helvetica", 
 title_size = st.sidebar.slider("Product Name Font Size", 6, 14, 9)
 price_size = st.sidebar.slider("Price Font Size", 12, 24, 16)
 
-
 # --- MAIN INTERFACE LAYOUT ---
 st.title("🎟️ Custom SaaS Bulk Price Ticket Generator")
-st.write("Upload an Excel or CSV file, customize templates on the sidebar, and print dynamic price tickets.")
 
-# --- NEW: LIVE SAMPLE PREVIEW WINDOW ---
+# --- HIGH-PRIORITY DOWNLOAD BUTTON AREA (CRITICAL FIX) ---
+if st.session_state["pdf_data_buffer"] is not None:
+    st.info("🎉 Your bulk print tickets portfolio is compiled and ready!")
+    st.download_button(
+        label="📥 CLICK HERE TO DOWNLOAD YOUR PRINT-READY PDF",
+        data=st.session_state["pdf_data_buffer"],
+        file_name="bulk_custom_tickets.pdf",
+        mime="application/pdf",
+        use_container_width=True
+    )
+    st.divider()
+
+# --- LIVE SAMPLE PREVIEW WINDOW ---
 st.subheader("👀 Live Ticket Sample Preview")
-
-# Map FPDF fonts to clean web display equivalents
 web_font = "Courier New, Courier, monospace" if font_choice == "Courier" else f"{font_choice}, sans-serif"
-
-# Construct dynamic HTML wrapper to represent the printed tag dimensions and selected styling options
 preview_border = f"3px solid {primary_color}" if bg_style == "Light Border Box" else "1px solid #ddd"
 preview_header_bg = primary_color if bg_style == "Solid Accent Header" else "transparent"
 preview_header_text = "#ffffff" if bg_style == "Solid Accent Header" else primary_color
 
-# HTML CSS Component for the dynamic ticket
 preview_html = f"""
 <div style="
     width: {dimensions['w'] * 5}px; 
@@ -69,66 +76,28 @@ preview_html = f"""
     overflow: hidden;
     box-shadow: 0 4px 10px rgba(0,0,0,0.15);
     margin-bottom: 20px;
-    transition: all 0.3s ease;
 ">
-    <div style="
-        background-color: {preview_header_bg}; 
-        padding: 8px; 
-        height: 35%;
-        box-sizing: border-box;
-    ">
-        <div style="
-            color: {preview_header_text}; 
-            font-size: {title_size + 4}px; 
-            font-weight: bold;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        ">
+    <div style="background-color: {preview_header_bg}; padding: 8px; height: 35%; box-sizing: border-box;">
+        <div style="color: {preview_header_text}; font-size: {title_size + 4}px; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
             Sample Product Name
         </div>
     </div>
-    
-    <div style="
-        position: absolute; 
-        top: 40%; 
-        left: 8px; 
-        color: {primary_color}; 
-        font-size: 12px;
-    ">
+    <div style="position: absolute; top: 40%; left: 8px; color: {primary_color}; font-size: 12px;">
         SKU: J705466
     </div>
-    
-    <div style="
-        position: absolute; 
-        bottom: 8px; 
-        left: 8px; 
-        color: {primary_color}; 
-        font-size: {price_size + 6}px; 
-        font-weight: bold;
-    ">
+    <div style="position: absolute; bottom: 8px; left: 8px; color: {primary_color}; font-size: {price_size + 6}px; font-weight: bold;">
         AED 799.00
     </div>
-    
-    <div style="
-        position: absolute; 
-        bottom: 8px; 
-        right: 8px; 
-        width: {dimensions['qr_size'] * 4.5}px; 
-        height: {dimensions['qr_size'] * 4.5}px; 
-        background-image: url('https://upload.wikimedia.org/wikipedia/commons/d/d0/QR_code_for_QR_Code_tutorial_images_section.png');
-        background-size: cover;
-        border: 1px solid #eee;
-    "></div>
+    <div style="position: absolute; bottom: 8px; right: 8px; width: {dimensions['qr_size'] * 4.5}px; height: {dimensions['qr_size'] * 4.5}px; background-image: url('https://upload.wikimedia.org/wikipedia/commons/d/d0/QR_code_for_QR_Code_tutorial_images_section.png'); background-size: cover; border: 1px solid #eee;"></div>
 </div>
 """
 st.markdown(preview_html, unsafe_allowed_html=True)
 st.divider()
 
-
 # --- DATA IMPORT ENGINE ---
 def clear_file_callback():
     st.session_state["file_uploader_key"] += 1
+    st.session_state["pdf_data_buffer"] = None
 
 uploaded_file = st.file_uploader(
     "Upload Product File (.xlsx or .csv)", 
@@ -149,6 +118,8 @@ if uploaded_file is not None:
         else:
             df = pd.read_excel(uploaded_file)
         
+        # FIX: Drop empty spacer columns that don't have valid header text
+        df = df.loc[:, ~df.columns.str.contains('^Unnamed')]
         df.columns = df.columns.astype(str).str.strip()
         
         mapped_cols = {}
@@ -168,6 +139,7 @@ if uploaded_file is not None:
         
         if missing_targets:
             st.error(f"Execution Halted. Could not auto-detect columns for: {missing_targets}")
+            st.info(f"Columns found inside your file: {list(df.columns)}")
         else:
             st.success("✨ Data payload mapped successfully!")
             
@@ -257,14 +229,10 @@ if uploaded_file is not None:
                     
                     progress_bar.progress((idx + 1) / total_rows)
                 
-                pdf_output = pdf.output()
+                # FIX: Save raw bytes directly to permanent session memory
+                st.session_state["pdf_data_buffer"] = pdf.output()
                 st.balloons()
-                st.download_button(
-                    label="📥 Download Clean Layout PDF",
-                    data=pdf_output,
-                    file_name="bulk_custom_tickets.pdf",
-                    mime="application/pdf"
-                )
+                st.rerun() # Refresh layout state immediately to trigger the header button!
                 
     except Exception as e:
         st.error(f"Fatal Parser Error: {e}")

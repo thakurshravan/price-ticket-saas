@@ -35,21 +35,98 @@ st.sidebar.subheader("Color Palette")
 primary_color = st.sidebar.color_picker("Text & Accent Color", "#000000")
 bg_style = st.sidebar.selectbox("Ticket Background Style", ["Plain White", "Light Border Box", "Solid Accent Header"])
 
-def hex_to_rgb(hex_str):
-    hex_str = hex_str.lstrip('#')
-    return tuple(int(hex_str[i:i+2], 16) for i in (0, 2, 4))
-
-p_r, p_g, p_b = hex_to_rgb(primary_color)
-
 st.sidebar.subheader("Typography")
 font_choice = st.sidebar.selectbox("Select Font Family", ["Arial", "Helvetica", "Courier"])
 title_size = st.sidebar.slider("Product Name Font Size", 6, 14, 9)
 price_size = st.sidebar.slider("Price Font Size", 12, 24, 16)
 
-# --- MAIN INTERFACE ---
+
+# --- MAIN INTERFACE LAYOUT ---
 st.title("🎟️ Custom SaaS Bulk Price Ticket Generator")
 st.write("Upload an Excel or CSV file, customize templates on the sidebar, and print dynamic price tickets.")
 
+# --- NEW: LIVE SAMPLE PREVIEW WINDOW ---
+st.subheader("👀 Live Ticket Sample Preview")
+
+# Map FPDF fonts to clean web display equivalents
+web_font = "Courier New, Courier, monospace" if font_choice == "Courier" else f"{font_choice}, sans-serif"
+
+# Construct dynamic HTML wrapper to represent the printed tag dimensions and selected styling options
+preview_border = f"3px solid {primary_color}" if bg_style == "Light Border Box" else "1px solid #ddd"
+preview_header_bg = primary_color if bg_style == "Solid Accent Header" else "transparent"
+preview_header_text = "#ffffff" if bg_style == "Solid Accent Header" else primary_color
+
+# HTML CSS Component for the dynamic ticket
+preview_html = f"""
+<div style="
+    width: {dimensions['w'] * 5}px; 
+    height: {dimensions['h'] * 5}px; 
+    border: {preview_border}; 
+    background-color: #ffffff; 
+    border-radius: 6px; 
+    position: relative; 
+    font-family: {web_font}; 
+    overflow: hidden;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+    margin-bottom: 20px;
+    transition: all 0.3s ease;
+">
+    <div style="
+        background-color: {preview_header_bg}; 
+        padding: 8px; 
+        height: 35%;
+        box-sizing: border-box;
+    ">
+        <div style="
+            color: {preview_header_text}; 
+            font-size: {title_size + 4}px; 
+            font-weight: bold;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        ">
+            Sample Product Name
+        </div>
+    </div>
+    
+    <div style="
+        position: absolute; 
+        top: 40%; 
+        left: 8px; 
+        color: {primary_color}; 
+        font-size: 12px;
+    ">
+        SKU: J705466
+    </div>
+    
+    <div style="
+        position: absolute; 
+        bottom: 8px; 
+        left: 8px; 
+        color: {primary_color}; 
+        font-size: {price_size + 6}px; 
+        font-weight: bold;
+    ">
+        AED 799.00
+    </div>
+    
+    <div style="
+        position: absolute; 
+        bottom: 8px; 
+        right: 8px; 
+        width: {dimensions['qr_size'] * 4.5}px; 
+        height: {dimensions['qr_size'] * 4.5}px; 
+        background-image: url('https://upload.wikimedia.org/wikipedia/commons/d/d0/QR_code_for_QR_Code_tutorial_images_section.png');
+        background-size: cover;
+        border: 1px solid #eee;
+    "></div>
+</div>
+"""
+st.markdown(preview_html, unsafe_allowed_html=True)
+st.divider()
+
+
+# --- DATA IMPORT ENGINE ---
 def clear_file_callback():
     st.session_state["file_uploader_key"] += 1
 
@@ -153,26 +230,21 @@ if uploaded_file is not None:
                     
                     allowed_text_width = w - qr_dim - 8
                     
-                    # 1. Product Name Rendering (FIXED: Swapped out .text for ultra-stable .cell)
                     pdf.set_text_color(text_r, text_g, text_b)
                     pdf.set_font(font_choice, 'B', size=title_size)
                     pdf.set_xy(4, start_y)
                     
-                    # Clean title truncation to prevent boundary overflows
                     short_name = row_name[:40] + "..." if len(row_name) > 40 else row_name
                     pdf.cell(allowed_text_width, 4, text=short_name, align='L')
                     
                     pdf.set_text_color(p_r, p_g, p_b)
                     
-                    # 2. SKU Rendering (FIXED)
                     pdf.set_font(font_choice, '', size=8)
                     pdf.set_xy(4, start_y + 6)
                     pdf.cell(allowed_text_width, 4, text=f"SKU: {row_sku}", align='L')
                     
-                    # 3. Barcode Placement
                     pdf.image(img_buffer, x=w - qr_dim - 4, y=h - qr_dim - 4, w=qr_dim, h=qr_dim)
                     
-                    # 4. Price Rendering (FIXED)
                     pdf.set_font(font_choice, 'B', size=price_size)
                     pdf.set_xy(4, h - 10)
                     try:

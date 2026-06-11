@@ -56,20 +56,15 @@ uploaded_file = st.file_uploader("Upload Product File (.xlsx or .csv)", type=["x
 
 if uploaded_file is not None:
     try:
-        # Smart Data Loader with separator fallback auto-detection
         if uploaded_file.name.endswith('.csv'):
             df = pd.read_csv(uploaded_file)
-            
-            # If everything mashed into one column, fallback to try separator guessing
             if len(df.columns) == 1 and ',' in df.columns[0]:
                 uploaded_file.seek(0)
                 df = pd.read_csv(uploaded_file, sep=None, engine='python')
         else:
             df = pd.read_excel(uploaded_file)
         
-        # Clean whitespaces out of headers
         df.columns = df.columns.str.strip()
-        
         st.success("✨ Data payload imported successfully!")
         
         col1, col2 = st.columns([1, 2])
@@ -84,7 +79,6 @@ if uploaded_file is not None:
         
         if missing_cols:
             st.error(f"Execution Halted. Missing columns inside File: {missing_cols}")
-            st.info(f"Detected columns inside your file were: {list(df.columns)}")
         else:
             if st.button("🚀 Render Custom Tickets Portfolio"):
                 
@@ -92,9 +86,10 @@ if uploaded_file is not None:
                 w, h = dimensions['w'], dimensions['h']
                 qr_dim = dimensions['qr_size']
                 
-                # FIX: Set auto_page_break=False directly during FPDF engine instantiation
+                # We switch off page break tracking entirely right at creation
                 pdf = FPDF(orientation=orient, unit='mm', format=(w, h))
-                pdf.set_auto_page_break(False, margin=0)
+                pdf.set_margin(0)
+                pdf.set_auto_page_break(False)
                 
                 progress_bar = st.progress(0)
                 total_rows = len(df)
@@ -102,7 +97,6 @@ if uploaded_file is not None:
                 for idx, row in df.iterrows():
                     pdf.add_page()
                     
-                    # Layout theme selections
                     if bg_style == "Solid Accent Header":
                         pdf.set_fill_color(p_r, p_g, p_b)
                         pdf.rect(0, 0, w, 10, 'F')
@@ -117,7 +111,7 @@ if uploaded_file is not None:
                         pdf.set_linewidth(0.4)
                         pdf.rect(1.5, 1.5, w - 3, h - 3)
                     
-                    # Explicitly instantiated from our direct QRCode module class reference
+                    # Generate QR Code image in memory
                     qr = QRCode(box_size=1, border=0)
                     qr.add_data(str(row['URL']))
                     qr.make(fit=True)
@@ -127,37 +121,44 @@ if uploaded_file is not None:
                     qr_img.save(img_buffer, format="PNG")
                     img_buffer.seek(0)
                     
-                    # Text box partition logic
                     allowed_text_width = w - qr_dim - 10
                     
-                    # 1. Output wrapped Product Title
+                    # 1. Product Title Text
                     pdf.set_text_color(text_r, text_g, text_b)
                     pdf.set_font(font_choice, 'B', size=title_size)
-                    pdf.set_xy(4, start_y)
-                    pdf.multi_cell(w=allowed_text_width, h=3.8, text=str(row['Product Name']), align='L')
                     
-                    current_y = pdf.get_y()
+                    # FIX: Truncate string manually to 2 lines maximum to safeguard memory layout constraints
+                    prod_name = str(row['Product Name'])
+                    if len(prod_name) > 24:
+                        line1 = prod_name[:24]
+                        line2 = prod_name[24:48] + "..." if len(prod_name) > 48 else prod_name[24:]
+                        pdf.text(4, start_y + 3, line1)
+                        pdf.text(4, start_y + 7, line2)
+                        next_element_y = start_y + 12
+                    else:
+                        pdf.text(4, start_y + 4, prod_name)
+                        next_element_y = start_y + 9
+                    
+                    # Reset text color back to user choice
                     pdf.set_text_color(p_r, p_g, p_b)
                     
-                    # 2. SKU Placement 
+                    # 2. SKU Placement
                     pdf.set_font(font_choice, '', size=8)
-                    pdf.set_xy(4, max(current_y + 1.2, 12 if bg_style == "Solid Accent Header" else 9))
-                    pdf.cell(w=allowed_text_width, h=4, text=f"SKU: {row['SKU']}", align='L')
+                    sku_y = max(next_element_y, 13 if bg_style == "Solid Accent Header" else 10)
+                    pdf.text(4, sku_y, f"SKU: {row['SKU']}")
                     
                     # 3. Dynamic QR Placement
                     pdf.image(img_buffer, x=w - qr_dim - 4, y=h - qr_dim - 4, w=qr_dim, h=qr_dim)
                     
                     # 4. Large Price Layout
                     pdf.set_font(font_choice, 'B', size=price_size)
-                    pdf.set_xy(4, h - 12)
-                    
                     try:
                         price_val = float(row['Price'])
                         price_text = f"AED {price_val:.2f}"
                     except:
                         price_text = f"AED {row['Price']}"
                         
-                    pdf.cell(w=allowed_text_width, h=8, text=price_text, align='L')
+                    pdf.text(4, h - 5, price_text)
                     
                     progress_bar.progress((idx + 1) / total_rows)
                 

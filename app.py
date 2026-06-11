@@ -84,7 +84,7 @@ if uploaded_file is not None:
         # Strip whitespaces from column headers safely
         df.columns = df.columns.astype(str).str.strip()
         
-        # --- ROBUST COLUMN MAPPER (Bypasses spelling/casing issues) ---
+        # --- ROBUST COLUMN MAPPER ---
         mapped_cols = {}
         for col in df.columns:
             col_lower = col.lower()
@@ -170,24 +170,26 @@ if uploaded_file is not None:
                     pdf.set_text_color(text_r, text_g, text_b)
                     pdf.set_font(font_choice, 'B', size=title_size)
                     
+                    # FIX: Explicitly added text= parameters to handle strings cleanly
                     if len(row_name) > 24:
                         line1 = row_name[:24]
                         line2 = row_name[24:45] + "..." if len(row_name) > 45 else row_name[24:]
-                        pdf.text(4, start_y + 3, line1)
-                        pdf.text(4, start_y + 7, line2)
+                        pdf.text(x=4, y=start_y + 3, text=line1)
+                        pdf.text(x=4, y=start_y + 7, text=line2)
                     else:
-                        pdf.text(4, start_y + 4, row_name)
+                        pdf.text(x=4, y=start_y + 4, text=row_name)
                     
                     pdf.set_text_color(p_r, p_g, p_b)
                     
-                    # 2. SKU Processing (Absolute layout location)
+                    # 2. SKU Processing (FIX: Explicit layout x, y, and text naming)
                     pdf.set_font(font_choice, '', size=8)
-                    pdf.text(4, 15 if bg_style == "Solid Accent Header" else 13, f"SKU: {row_sku}")
+                    sku_y = 15 if bg_style == "Solid Accent Header" else 13
+                    pdf.text(x=4, y=sku_y, text=f"SKU: {row_sku}")
                     
                     # 3. Dynamic QR Code placement
                     pdf.image(img_buffer, x=w - qr_dim - 4, y=h - qr_dim - 4, w=qr_dim, h=qr_dim)
                     
-                    # 4. Price Parsing & Layout Processing
+                    # 4. Large Price Layout (FIX: Explicit layout x, y, and text naming)
                     pdf.set_font(font_choice, 'B', size=price_size)
                     try:
                         price_val = float(raw_price)
@@ -195,7 +197,7 @@ if uploaded_file is not None:
                     except:
                         price_text = f"AED {raw_price}"
                         
-                    pdf.text(4, h - 5, price_text)
+                    pdf.text(x=4, y=h - 5, text=price_text)
                     
                     progress_bar.progress((idx + 1) / total_rows)
                 

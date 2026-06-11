@@ -57,10 +57,9 @@ if uploaded_file is not None:
     try:
         # Smart Data Loader with separator fallback auto-detection
         if uploaded_file.name.endswith('.csv'):
-            # First attempt with default comma
             df = pd.read_csv(uploaded_file)
             
-            # If everything mashed into one column, fallback to try semicolon separator
+            # If everything mashed into one column, fallback to try separator guessing
             if len(df.columns) == 1 and ',' in df.columns[0]:
                 uploaded_file.seek(0)
                 df = pd.read_csv(uploaded_file, sep=None, engine='python')
@@ -133,20 +132,20 @@ if uploaded_file is not None:
                     pdf.set_text_color(text_r, text_g, text_b)
                     pdf.set_font(font_choice, 'B', size=title_size)
                     pdf.set_xy(4, start_y)
-                    pdf.multi_cell(allowed_text_width, 3.8, text=str(row['Product Name']), align='L')
+                    pdf.multi_cell(w=allowed_text_width, h=3.8, text=str(row['Product Name']), align='L')
                     
                     current_y = pdf.get_y()
                     pdf.set_text_color(p_r, p_g, p_b)
                     
-                    # 2. SKU Placement
+                    # 2. SKU Placement (FIX: Added explicit w= and h= positional anchors)
                     pdf.set_font(font_choice, '', size=8)
                     pdf.set_xy(4, max(current_y + 1.2, 12 if bg_style == "Solid Accent Header" else 9))
-                    pdf.cell(allowed_text_width, 4, text=f"SKU: {row['SKU']}", align='L')
+                    pdf.cell(w=allowed_text_width, h=4, text=f"SKU: {row['SKU']}", align='L')
                     
                     # 3. Dynamic QR Placement
                     pdf.image(img_buffer, x=w - qr_dim - 4, y=h - qr_dim - 4, w=qr_dim, h=qr_dim)
                     
-                    # 4. Large Price Layout
+                    # 4. Large Price Layout (FIX: Added explicit w= and h= positional anchors)
                     pdf.set_font(font_choice, 'B', size=price_size)
                     pdf.set_xy(4, h - 12)
                     
@@ -156,7 +155,7 @@ if uploaded_file is not None:
                     except:
                         price_text = f"AED {row['Price']}"
                         
-                    pdf.cell(allowed_text_width, 8, text=price_text, align='L')
+                    pdf.cell(w=allowed_text_width, h=8, text=price_text, align='L')
                     
                     progress_bar.progress((idx + 1) / total_rows)
                 

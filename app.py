@@ -9,7 +9,7 @@ st.set_page_config(page_title="SaaS Bulk Label Generator", layout="wide")
 if "file_uploader_key" not in st.session_state:
     st.session_state["file_uploader_key"] = 0
 
-# --- GLOBAL UTILITY MATH (FIXED: Moved up so both preview and printer can sync) ---
+# --- GLOBAL UTILITY LOGIC ---
 def hex_to_rgb(hex_str):
     hex_str = hex_str.lstrip('#')
     return tuple(int(hex_str[i:i+2], 16) for i in (0, 2, 4))
@@ -56,7 +56,7 @@ price_size = st.sidebar.slider("Price Font Size", 14, 32, 18)
 st.title("🎟️ Custom SaaS Bulk Price Ticket Generator")
 st.write("Upload a file, customize styles, and print directly onto standard A4 sticker sheets.")
 
-# --- LIVE PREVIEW WINDOW (FIXED: Full styling sync implemented) ---
+# --- LIVE PREVIEW WINDOW ---
 st.subheader("👀 Live Ticket Sample Preview")
 web_font = "Courier New, monospace" if font_choice == "Courier" else f"{font_choice}, sans-serif"
 preview_border = f"2px solid {primary_color}" if bg_style == "Light Border Box" or bg_style == "Solid Accent Header" else "1px solid #ddd"
@@ -194,6 +194,7 @@ if uploaded_file is not None:
 
             st.subheader("🖨️ Printable Document Feed")
             
+            # FIXED: Removed st.rerun() loop trigger so page state handles sync naturally
             iframe_content = f"""
             <html>
             <head>

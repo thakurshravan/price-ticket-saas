@@ -1,7 +1,6 @@
 import streamlit as st
 import pandas as pd
 import qrcode
-from qrcode.main import QRCode
 from fpdf import FPDF
 import io
 
@@ -110,20 +109,16 @@ if uploaded_file is not None:
         st.rerun()
 
     try:
-        # FIX: Safe dynamic raw file reading stream block
         file_bytes = uploaded_file.getvalue()
         
         if uploaded_file.name.endswith('.csv'):
-            # Convert raw bytes stream safely to clear memory text lines
             data_str = file_bytes.decode('utf-8', errors='ignore')
             df = pd.read_csv(io.StringIO(data_str), header=None)
         else:
             df = pd.read_excel(io.BytesIO(file_bytes), header=None)
         
-        # Strip out empty spacers safely now that it is a validated DataFrame object
+        # Clean up empty headers/rows safely
         df = df.dropna(how='all').dropna(axis=1, how='all')
-        
-        # Re-index first true text row as headers
         df.columns = df.iloc[0].astype(str).str.strip()
         df = df[1:].reset_index(drop=True)
         
@@ -201,7 +196,8 @@ if uploaded_file is not None:
                         pdf.set_linewidth(0.4)
                         pdf.rect(1.5, 1.5, w - 3, h - 3)
                     
-                    qr = QRCode(box_size=1, border=0)
+                    # FIXED: Initializing directly from standard verified base module instantiation 
+                    qr = qrcode.QRCode(box_size=1, border=0)
                     qr.add_data(row_url)
                     qr.make(fit=True)
                     qr_img = qr.make_image(fill_color="black", back_color="white")
@@ -239,7 +235,7 @@ if uploaded_file is not None:
                     
                     progress_bar.progress((idx + 1) / total_rows)
                 
-                # Stream binary buffer block safely
+                # Output stable standard bytes stream
                 pdf_output = pdf.output(dest='S')
                 if isinstance(pdf_output, str):
                     st.session_state["pdf_data_buffer"] = pdf_output.encode('latin-1')

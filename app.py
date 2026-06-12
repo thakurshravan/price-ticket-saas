@@ -32,10 +32,10 @@ def process_logo_to_base64(uploaded_logo):
             return None
     return None
 
-# Inline function to generate the stylized custom symbol vector overlay dynamically matching selected user color hex tones
-def get_custom_currency_svg(color_hex, size_px=28):
+# Optimized SVG generator with flex baseline alignment support to stop overlapping
+def get_custom_currency_svg(color_hex, size_px=24):
     return f"""
-    <svg width="{size_px}px" height="{size_px}px" viewBox="0 0 200 200" style="vertical-align: middle; margin-right: 4px; display: inline-block;" xmlns="http://www.w3.org/2000/svg">
+    <svg width="{size_px}px" height="{size_px}px" viewBox="0 0 200 200" style="display: inline-block; margin-right: 6px; flex-shrink: 0;" xmlns="http://www.w3.org/2000/svg">
         <path d="M40 20 C 80 20, 110 30, 130 60 C 145 80, 150 105, 150 130 C 150 155, 140 170, 125 180 C 105 192, 70 195, 40 195 L 40 180 C 70 180, 95 175, 110 165 C 122 155, 128 142, 128 125 C 128 105, 122 88, 108 75 C 92 60, 68 55, 40 55 Z" fill="{color_hex}"/>
         <path d="M20 80 L 175 80 C 185 80, 190 88, 185 95 C 180 102, 170 102, 160 102 L 20 102 C 10 102, 5 95, 10 88 C 15 82, 20 80, 20 80 Z" fill="{color_hex}"/>
         <path d="M20 115 L 175 115 C 185 115, 190 123, 185 130 C 180 137, 170 137, 160 137 L 20 137 C 10 137, 5 130, 10 123 C 15 117, 20 115, 20 115 Z" fill="{color_hex}"/>
@@ -69,10 +69,9 @@ else:
 primary_color = st.sidebar.color_picker("Text & Accent Color", "#8a1515")
 
 bg_style = st.sidebar.selectbox("Ticket Background Style", [
-    "Solid Accent Header + Custom Currency Symbol",
+    "Solid Accent Header",
     "Plain White", 
     "Light Border Box", 
-    "Solid Accent Header", 
     "Minimalist Left Ribbon", 
     "Modern Gradient Top", 
     "Double Thin Border",
@@ -106,7 +105,7 @@ def compute_ticket_styles(style_name, primary_hex):
     corner_accent_html = ""
     footer_bg_html = ""
     
-    if style_name in ["Solid Accent Header", "Solid Accent Header + Custom Currency Symbol"]:
+    if style_name == "Solid Accent Header":
         card_border = f"2px solid {primary_hex}"
         header_bg = primary_hex
         header_text = "#ffffff"
@@ -156,13 +155,16 @@ st.write("Upload a file, customize styles, and print directly onto standard A4 s
 # --- LIVE PREVIEW WINDOW ---
 st.subheader("👀 Live Ticket Sample Preview")
 
-# Currency display formatting engine based on chosen theme
-if "Custom Currency Symbol" in bg_style:
-    preview_currency_display = f'{get_custom_currency_svg(primary_color, size_px=26)}<span style="vertical-align: middle; margin-left: 2px;">799.00</span>'
-    preview_was_currency_display = f'<div style="text-decoration: line-through; font-size: {price_size - 4}pt; color: #888; line-height: 1; display: flex; align-items: center;">{get_custom_currency_svg("#888", size_px=18)} 90.85</div>' if show_was_price else ''
-else:
-    preview_currency_display = '<span style="direction: rtl; text-align: left; display: inline-block;">799.00 د.إ</span>'
-    preview_was_currency_display = f'<div style="text-decoration: line-through; font-size: {price_size - 4}pt; color: #888; line-height: 1; direction: rtl; text-align: left;">90.85 د.إ</div>' if show_was_price else ''
+# Compute baseline layout sizes for preview icons to prevent overlaps
+main_icon_size = max(20, int((price_size + 4) * 0.85))
+was_icon_size = max(14, int((price_size - 4) * 0.85))
+
+preview_currency_display = f"{get_custom_currency_svg(active_text_color, size_px=main_icon_size)}<span>79.00</span>"
+preview_was_currency_display = f"""
+<div style="text-decoration: line-through; font-size: {price_size - 4}pt; color: #888; margin-bottom: 2px; display: inline-flex; align-items: baseline; line-height: 1;">
+    {get_custom_currency_svg("#888", size_px=was_icon_size)}<span>90.85</span>
+</div>
+""" if show_was_price else ''
 
 preview_logo_html = ""
 if logo_b64:
@@ -209,9 +211,9 @@ preview_html = f"""
     
     {preview_logo_html}
     
-    <div style="position: absolute; bottom: 10px; left: {'14px' if bg_style == 'Minimalist Left Ribbon' else '8px'}; line-height: 1;">
+    <div style="position: absolute; bottom: 10px; left: {'14px' if bg_style == 'Minimalist Left Ribbon' else '8px'}; display: flex; flex-direction: column; align-items: flex-start; justify-content: flex-end;">
         {preview_was_currency_display}
-        <div style="color: {active_text_color}; font-size: {price_size + 4}px; font-weight: bold; display: flex; align-items: center;">
+        <div style="color: {active_text_color}; font-size: {price_size + 4}px; font-weight: bold; display: inline-flex; align-items: baseline; line-height: 1;">
             {preview_currency_display}
         </div>
     </div>
@@ -281,14 +283,16 @@ if uploaded_file is not None:
                     formatted_num = str(row[mapped_cols['Price']])
                     was_formatted_num = ""
 
-                # Compute printing currency element based on chosen active background rule set
-                if "Custom Currency Symbol" in bg_style:
-                    # Scale down the vector slightly for the final physical print metrics
-                    print_currency_markup = f'{get_custom_currency_svg(primary_color, size_px=22)}<span style="vertical-align: middle; margin-left: 1px;">{formatted_num}</span>'
-                    print_was_markup = f'<div style="text-decoration: line-through; font-size: {price_size - 4}pt; color: #888; margin-bottom: 1px; display: flex; align-items: center;">{get_custom_currency_svg("#888", size_px=14)} {was_formatted_num}</div>' if (show_was_price and was_formatted_num) else ''
-                else:
-                    print_currency_markup = f'<span style="direction: rtl; text-align: left; display: inline-block;">{formatted_num} د.إ</span>'
-                    print_was_markup = f'<div style="text-decoration: line-through; font-size: {price_size - 4}pt; color: #888; margin-bottom: 1px; direction: rtl; text-align: left;">{was_formatted_num} د.إ</div>' if (show_was_price and was_formatted_num) else ''
+                # Standard mm-to-pixel sizing formulas for clean physical printing
+                print_main_icon_size = max(16, int(price_size * 0.85))
+                print_was_icon_size = max(11, int((price_size - 4) * 0.85))
+
+                print_currency_markup = f'{get_custom_currency_svg(active_text_color, size_px=print_main_icon_size)}<span>{formatted_num}</span>'
+                print_was_markup = f"""
+                <div style="text-decoration: line-through; font-size: {price_size - 4}pt; color: #888; margin-bottom: 2px; display: inline-flex; align-items: baseline; line-height: 1;">
+                    {get_custom_currency_svg("#888", size_px=print_was_icon_size)}<span>{was_formatted_num}</span>
+                </div>
+                """ if (show_was_price and was_formatted_num) else ''
 
                 qr_b64 = generate_qr_base64(str(row[mapped_cols["URL"]]))
 
@@ -339,9 +343,9 @@ if uploaded_file is not None:
                     
                     {card_logo_html}
                     
-                    <div style="position: absolute; bottom: 6px; left: {'5mm' if bg_style == 'Minimalist Left Ribbon' else '6px'}; line-height: 1;">
+                    <div style="position: absolute; bottom: 6px; left: {'5mm' if bg_style == 'Minimalist Left Ribbon' else '6px'}; display: flex; flex-direction: column; align-items: flex-start; justify-content: flex-end;">
                         {print_was_markup}
-                        <div style="color: {active_text_color}; font-size: {price_size}pt; font-weight: bold; display: flex; align-items: center;">
+                        <div style="color: {active_text_color}; font-size: {price_size}pt; font-weight: bold; display: inline-flex; align-items: baseline; line-height: 1;">
                             {print_currency_markup}
                         </div>
                     </div>

@@ -32,10 +32,10 @@ def process_logo_to_base64(uploaded_logo):
             return None
     return None
 
-# Optimized SVG generator with flex baseline alignment support to stop overlapping
+# Re-architected SVG with absolute grid scaling properties to completely isolate dimensions
 def get_custom_currency_svg(color_hex, size_px=24):
     return f"""
-    <svg width="{size_px}px" height="{size_px}px" viewBox="0 0 200 200" style="display: inline-block; margin-right: 6px; flex-shrink: 0;" xmlns="http://www.w3.org/2000/svg">
+    <svg width="{size_px}px" height="{size_px}px" viewBox="0 0 200 200" style="display: block; overflow: visible;" xmlns="http://www.w3.org/2000/svg">
         <path d="M40 20 C 80 20, 110 30, 130 60 C 145 80, 150 105, 150 130 C 150 155, 140 170, 125 180 C 105 192, 70 195, 40 195 L 40 180 C 70 180, 95 175, 110 165 C 122 155, 128 142, 128 125 C 128 105, 122 88, 108 75 C 92 60, 68 55, 40 55 Z" fill="{color_hex}"/>
         <path d="M20 80 L 175 80 C 185 80, 190 88, 185 95 C 180 102, 170 102, 160 102 L 20 102 C 10 102, 5 95, 10 88 C 15 82, 20 80, 20 80 Z" fill="{color_hex}"/>
         <path d="M20 115 L 175 115 C 185 115, 190 123, 185 130 C 180 137, 170 137, 160 137 L 20 137 C 10 137, 5 130, 10 123 C 15 117, 20 115, 20 115 Z" fill="{color_hex}"/>
@@ -155,28 +155,35 @@ st.write("Upload a file, customize styles, and print directly onto standard A4 s
 # --- LIVE PREVIEW WINDOW ---
 st.subheader("👀 Live Ticket Sample Preview")
 
-# Compute baseline layout sizes for preview icons to prevent overlaps
-main_icon_size = max(20, int((price_size + 4) * 0.85))
-was_icon_size = max(14, int((price_size - 4) * 0.85))
+main_icon_size = max(18, int((price_size + 4) * 0.85))
+was_icon_size = max(13, int((price_size - 4) * 0.85))
 
-preview_currency_display = f"{get_custom_currency_svg(active_text_color, size_px=main_icon_size)}<span>79.00</span>"
-preview_was_currency_display = f"""
-<div style="text-decoration: line-through; font-size: {price_size - 4}pt; color: #888; margin-bottom: 2px; display: inline-flex; align-items: baseline; line-height: 1;">
-    {get_custom_currency_svg("#888", size_px=was_icon_size)}<span>90.85</span>
-</div>
-""" if show_was_price else ''
+# Anti-Overlap Layout: Structural table system forcing zero intersection
+preview_price_table_html = f"""
+<table style="border-collapse: collapse; border: none; margin: 0; padding: 0;">
+"""
+if show_was_price:
+    preview_price_table_html += f"""
+    <tr>
+        <td style="padding: 0 4px 0 0; margin: 0; vertical-align: middle; line-height: 1;">{get_custom_currency_svg("#888", size_px=was_icon_size)}</td>
+        <td style="padding: 0; margin: 0; vertical-align: middle; line-height: 1; font-size: {price_size - 4}pt; color: #888; text-decoration: line-through;">90.85</td>
+    </tr>
+    """
+preview_price_table_html += f"""
+    <tr>
+        <td style="padding: 0 4px 0 0; margin: 0; vertical-align: middle; line-height: 1;">{get_custom_currency_svg(active_text_color, size_px=main_icon_size)}</td>
+        <td style="padding: 0; margin: 0; vertical-align: middle; line-height: 1; font-size: {price_size + 4}px; font-weight: bold; color: {active_text_color};">79.00</td>
+    </tr>
+</table>
+"""
 
+# New Feature: Top right corner dynamic brand logo fit layout
 preview_logo_html = ""
 if logo_b64:
     preview_logo_html = f"""
-    <img src="data:image/png;base64,{logo_b64}" style="
-        position: absolute;
-        top: 42%;
-        right: 12px;
-        max-height: 25px;
-        max-width: 70px;
-        object-fit: contain;
-    " />
+    <div style="position: absolute; top: 6px; right: 8px; max-width: 30%; max-height: 35%; display: flex; justify-content: flex-end; align-items: center; z-index: 20;">
+        <img src="data:image/png;base64,{logo_b64}" style="max-width: 100%; max-height: 100%; object-fit: contain;" />
+    </div>
     """
 
 double_border_inset_open = f'<div style="position: absolute; top: 3px; bottom: 3px; left: 3px; right: 3px; border: 1px solid {primary_color}; box-sizing: border-box; pointer-events: none;">' if bg_style == "Double Thin Border" else ""
@@ -199,8 +206,9 @@ preview_html = f"""
     {styles['left_ribbon']}
     {styles['corner_accent']}
     {styles['footer_bg']}
+    {preview_logo_html}
     
-    <div style="background: {styles['header_bg']}; padding: 8px; height: 35%; box-sizing: border-box;">
+    <div style="background: {styles['header_bg']}; padding: 8px; padding-right: 35%; height: 35%; box-sizing: border-box;">
         <div style="color: {styles['header_text']}; font-size: {title_size + 4}px; font-weight: bold; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
             Hyphen MagSafe AIRE Clear Case for iPhone 13, Clear
         </div>
@@ -209,13 +217,8 @@ preview_html = f"""
         SKU: 1011480
     </div>
     
-    {preview_logo_html}
-    
-    <div style="position: absolute; bottom: 10px; left: {'14px' if bg_style == 'Minimalist Left Ribbon' else '8px'}; display: flex; flex-direction: column; align-items: flex-start; justify-content: flex-end;">
-        {preview_was_currency_display}
-        <div style="color: {active_text_color}; font-size: {price_size + 4}px; font-weight: bold; display: inline-flex; align-items: baseline; line-height: 1;">
-            {preview_currency_display}
-        </div>
+    <div style="position: absolute; bottom: 10px; left: {'14px' if bg_style == 'Minimalist Left Ribbon' else '8px'};">
+        {preview_price_table_html}
     </div>
     
     <div style="position: absolute; bottom: 10px; right: 8px; width: {dimensions['qr_size'] * 2.8}px; height: {dimensions['qr_size'] * 2.8}px; background-image: url('https://upload.wikimedia.org/wikipedia/commons/d/d0/QR_code_for_QR_Code_tutorial_images_section.png'); background-size: cover; border: 1px solid #eee;"></div>
@@ -283,30 +286,35 @@ if uploaded_file is not None:
                     formatted_num = str(row[mapped_cols['Price']])
                     was_formatted_num = ""
 
-                # Standard mm-to-pixel sizing formulas for clean physical printing
                 print_main_icon_size = max(16, int(price_size * 0.85))
                 print_was_icon_size = max(11, int((price_size - 4) * 0.85))
 
-                print_currency_markup = f'{get_custom_currency_svg(active_text_color, size_px=print_main_icon_size)}<span>{formatted_num}</span>'
-                print_was_markup = f"""
-                <div style="text-decoration: line-through; font-size: {price_size - 4}pt; color: #888; margin-bottom: 2px; display: inline-flex; align-items: baseline; line-height: 1;">
-                    {get_custom_currency_svg("#888", size_px=print_was_icon_size)}<span>{was_formatted_num}</span>
-                </div>
-                """ if (show_was_price and was_formatted_num) else ''
+                # Physical item printing price matrix
+                print_price_table_html = f"""
+                <table style="border-collapse: collapse; border: none; margin: 0; padding: 0;">
+                """
+                if show_was_price and was_formatted_num:
+                    print_price_table_html += f"""
+                    <tr>
+                        <td style="padding: 0 4px 0 0; margin: 0; vertical-align: middle; line-height: 1;">{get_custom_currency_svg("#888", size_px=print_was_icon_size)}</td>
+                        <td style="padding: 0; margin: 0; vertical-align: middle; line-height: 1; font-size: {price_size - 4}pt; color: #888; text-decoration: line-through;">{was_formatted_num}</td>
+                    </tr>
+                    """
+                print_price_table_html += f"""
+                    <tr>
+                        <td style="padding: 0 4px 0 0; margin: 0; vertical-align: middle; line-height: 1;">{get_custom_currency_svg(active_text_color, size_px=print_main_icon_size)}</td>
+                        <td style="padding: 0; margin: 0; vertical-align: middle; line-height: 1; font-size: {price_size}pt; font-weight: bold; color: {active_text_color};">{formatted_num}</td>
+                    </tr>
+                </table>
+                """
 
-                qr_b64 = generate_qr_base64(str(row[mapped_cols["URL"]]))
-
+                # Printable Logo configuration with dynamic fitting limits 
                 card_logo_html = ""
                 if logo_b64:
                     card_logo_html = f"""
-                    <img src="data:image/png;base64,{logo_b64}" style="
-                        position: absolute;
-                        top: 42%;
-                        right: 6px;
-                        max-height: 6mm;
-                        max-width: 18mm;
-                        object-fit: contain;
-                    " />
+                    <div style="position: absolute; top: 1.5mm; right: 2mm; max-width: 30%; max-height: 35%; display: flex; justify-content: flex-end; align-items: center; z-index: 20;">
+                        <img src="data:image/png;base64,{logo_b64}" style="max-width: 100%; max-height: 100%; object-fit: contain;" />
+                    </div>
                     """
 
                 print_double_border_open = f'<div style="position: absolute; top: 0.8mm; bottom: 0.8mm; left: 0.8mm; right: 0.8mm; border: 0.25mm solid {primary_color}; box-sizing: border-box; pointer-events: none;">' if bg_style == "Double Thin Border" else ""
@@ -331,8 +339,9 @@ if uploaded_file is not None:
                     {styles['left_ribbon']}
                     {styles['corner_accent']}
                     {styles['footer_bg']}
+                    {card_logo_html}
                     
-                    <div style="background: {styles['header_bg']}; padding: 6px; height: 35%; box-sizing: border-box;">
+                    <div style="background: {styles['header_bg']}; padding: 6px; padding-right: 35%; height: 35%; box-sizing: border-box;">
                         <div style="color: {styles['header_text']}; font-size: {title_size}pt; font-weight: bold; line-height: 1.1; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
                             {row[mapped_cols["Product Name"]]}
                         </div>
@@ -341,13 +350,8 @@ if uploaded_file is not None:
                         SKU: {row[mapped_cols["SKU"]]}
                     </div>
                     
-                    {card_logo_html}
-                    
-                    <div style="position: absolute; bottom: 6px; left: {'5mm' if bg_style == 'Minimalist Left Ribbon' else '6px'}; display: flex; flex-direction: column; align-items: flex-start; justify-content: flex-end;">
-                        {print_was_markup}
-                        <div style="color: {active_text_color}; font-size: {price_size}pt; font-weight: bold; display: inline-flex; align-items: baseline; line-height: 1;">
-                            {print_currency_markup}
-                        </div>
+                    <div style="position: absolute; bottom: 6px; left: {'5mm' if bg_style == 'Minimalist Left Ribbon' else '6px'};">
+                        {print_price_table_html}
                     </div>
                     
                     <img src="data:image/png;base64,{qr_b64}" style="

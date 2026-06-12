@@ -23,6 +23,16 @@ def generate_qr_base64(url):
     img.save(buffered, format="PNG")
     return base64.b64encode(buffered.getvalue()).decode()
 
+# Helper function to convert the uploaded branding logo to Base64
+def process_logo_to_base64(uploaded_logo):
+    if uploaded_logo is not None:
+        try:
+            bytes_data = uploaded_logo.getvalue()
+            return base64.b64encode(bytes_data).decode()
+        except:
+            return None
+    return None
+
 # --- SIDEBAR: CONFIGURATION ---
 st.sidebar.header("🎨 Advanced Customization Engine")
 
@@ -30,6 +40,9 @@ SIZE_TEMPLATES = {
     "60x40 mm (Standard Shelf Edge)": {"w": 60, "h": 40, "qr_size": 18},
     "40x50 mm (Hang Tag)": {"w": 40, "h": 50, "qr_size": 15},
     "80x50 mm (Large Display)": {"w": 80, "h": 50, "qr_size": 22},
+    "A5 Size (148x210 mm)": {"w": 148, "h": 210, "qr_size": 45},
+    "A6 Size (105x148 mm)": {"w": 105, "h": 148, "qr_size": 35},
+    "A7 Size (74x105 mm)": {"w": 74, "h": 105, "qr_size": 25},
     "Custom Size...": None
 }
 
@@ -37,8 +50,8 @@ selected_size = st.sidebar.selectbox("1. Select Target Ticket Size", list(SIZE_T
 
 if selected_size == "Custom Size...":
     st.sidebar.markdown("📐 **Enter Manual Dimensions (in mm):**")
-    custom_w = st.sidebar.number_input("Ticket Width (mm)", min_value=10, max_value=200, value=60, step=1)
-    custom_h = st.sidebar.number_input("Ticket Height (mm)", min_value=10, max_value=200, value=40, step=1)
+    custom_w = st.sidebar.number_input("Ticket Width (mm)", min_value=10, max_value=250, value=60, step=1)
+    custom_h = st.sidebar.number_input("Ticket Height (mm)", min_value=10, max_value=250, value=40, step=1)
     custom_qr = st.sidebar.number_input("QR Code Size (mm)", min_value=5, max_value=min(custom_w, custom_h)-5, value=18, step=1)
     dimensions = {"w": custom_w, "h": custom_h, "qr_size": custom_qr}
 else:
@@ -49,11 +62,15 @@ bg_style = st.sidebar.selectbox("Ticket Background Style", ["Plain White", "Ligh
 
 st.sidebar.subheader("Typography")
 font_choice = st.sidebar.selectbox("Select Font Family", ["Arial", "Helvetica", "Courier"])
-title_size = st.sidebar.slider("Product Name Font Size", 8, 20, 11)
-price_size = st.sidebar.slider("Price Font Size", 14, 32, 18)
+title_size = st.sidebar.slider("Product Name Font Size", 8, 24, 11)
+price_size = st.sidebar.slider("Price Font Size", 14, 42, 18)
 
-# Add control to toggle discount lines
 show_was_price = st.sidebar.checkbox("Show Strikethrough 'Was' Price Row", value=True)
+
+# New Feature: Branding Logo Upload Panel Component
+st.sidebar.subheader("🏢 Corporate Branding")
+uploaded_logo = st.sidebar.file_uploader("Upload Brand Logo (PNG/JPG)", type=["png", "jpg", "jpeg"])
+logo_b64 = process_logo_to_base64(uploaded_logo)
 
 # --- GLOBAL FONT CONFIGURATION ---
 web_font = "Courier New, monospace" if font_choice == "Courier" else f"{font_choice}, sans-serif"
@@ -70,10 +87,24 @@ preview_header_text = "#ffffff" if bg_style == "Solid Accent Header" else primar
 
 was_price_html = f'<div style="text-decoration: line-through; font-size: {price_size - 4}pt; color: #888; line-height: 1;">AED 879.00</div>' if show_was_price else ''
 
+# Inject brand logo HTML conditionally into live preview window
+preview_logo_html = ""
+if logo_b64:
+    preview_logo_html = f"""
+    <img src="data:image/png;base64,{logo_b64}" style="
+        position: absolute;
+        top: 42%;
+        right: 8px;
+        max-height: 25px;
+        max-width: 70px;
+        object-fit: contain;
+    " />
+    """
+
 preview_html = f"""
 <div style="
-    width: {dimensions['w'] * 5}px; 
-    height: {dimensions['h'] * 5}px; 
+    width: {dimensions['w'] * 3}px; 
+    height: {dimensions['h'] * 3}px; 
     border: {preview_border}; 
     background-color: #ffffff; 
     border-radius: 4px; 
@@ -84,13 +115,15 @@ preview_html = f"""
     margin-bottom: 20px;
 ">
     <div style="background-color: {preview_header_bg}; padding: 8px; height: 35%; box-sizing: border-box;">
-        <div style="color: {preview_header_text}; font-size: {title_size + 2}px; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+        <div style="color: {preview_header_text}; font-size: {title_size + 4}px; font-weight: bold; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
             Sample Product Name
         </div>
     </div>
     <div style="position: absolute; top: 45%; left: 8px; color: #555; font-size: 11px;">
         SKU: J705466
     </div>
+    
+    {preview_logo_html}
     
     <div style="position: absolute; bottom: 8px; left: 8px;">
         {was_price_html}
@@ -99,7 +132,7 @@ preview_html = f"""
         </div>
     </div>
     
-    <div style="position: absolute; bottom: 8px; right: 8px; width: {dimensions['qr_size'] * 4.5}px; height: {dimensions['qr_size'] * 4.5}px; background-image: url('https://upload.wikimedia.org/wikipedia/commons/d/d0/QR_code_for_QR_Code_tutorial_images_section.png'); background-size: cover; border: 1px solid #eee;"></div>
+    <div style="position: absolute; bottom: 8px; right: 8px; width: {dimensions['qr_size'] * 2.8}px; height: {dimensions['qr_size'] * 2.8}px; background-image: url('https://upload.wikimedia.org/wikipedia/commons/d/d0/QR_code_for_QR_Code_tutorial_images_section.png'); background-size: cover; border: 1px solid #eee;"></div>
 </div>
 """
 st.markdown(preview_html, unsafe_allow_html=True)
@@ -163,7 +196,7 @@ if uploaded_file is not None:
                 try:
                     price_val = float(row[mapped_cols["Price"]])
                     price_text = f"AED {price_val:.2f}"
-                    was_price_text = f"AED {price_val * 1.15:.2f}" # Simulated Was Price row calculation
+                    was_price_text = f"AED {price_val * 1.15:.2f}" 
                 except:
                     price_text = f"AED {row[mapped_cols['Price']]}"
                     was_price_text = ""
@@ -171,6 +204,20 @@ if uploaded_file is not None:
                 qr_b64 = generate_qr_base64(str(row[mapped_cols["URL"]]))
                 
                 was_row_inner = f'<div style="text-decoration: line-through; font-size: {price_size - 4}pt; color: #888; margin-bottom: 1px;">{was_price_text}</div>' if (show_was_price and was_price_text) else ''
+
+                # Inject corporate branding logo HTML conditionally into production ticket matrix loop
+                card_logo_html = ""
+                if logo_b64:
+                    card_logo_html = f"""
+                    <img src="data:image/png;base64,{logo_b64}" style="
+                        position: absolute;
+                        top: 42%;
+                        right: 6px;
+                        max-height: 6mm;
+                        max-width: 18mm;
+                        object-fit: contain;
+                    " />
+                    """
 
                 html_cards += f"""
                 <div class="ticket-card" style="
@@ -195,6 +242,8 @@ if uploaded_file is not None:
                     <div style="position: absolute; top: 42%; left: 6px; color: #555; font-size: 8pt;">
                         SKU: {row[mapped_cols["SKU"]]}
                     </div>
+                    
+                    {card_logo_html}
                     
                     <div style="position: absolute; bottom: 6px; left: 6px; line-height: 1;">
                         {was_row_inner}

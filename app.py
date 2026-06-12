@@ -58,7 +58,6 @@ else:
 
 primary_color = st.sidebar.color_picker("Text & Accent Color", "#1E1E1E")
 
-# Expanded to 10 distinct background choices
 bg_style = st.sidebar.selectbox("Ticket Background Style", [
     "Plain White", 
     "Light Border Box", 
@@ -87,9 +86,7 @@ logo_b64 = process_logo_to_base64(uploaded_logo)
 web_font = "Courier New, monospace" if font_choice == "Courier" else f"{font_choice}, sans-serif"
 
 # --- CORE STYLE SOLVER LOGIC ---
-# This converts the user selection into specific CSS property rules applied uniformly to preview & final document arrays
 def compute_ticket_styles(style_name, primary_hex):
-    # Default Fallback initializations
     card_bg = "#ffffff"
     card_border = "1px dashed #ccc"
     header_bg = "transparent"
@@ -100,40 +97,31 @@ def compute_ticket_styles(style_name, primary_hex):
     
     if style_name == "Light Border Box":
         card_border = f"2px solid {primary_hex}"
-        
     elif style_name == "Solid Accent Header":
         card_border = f"2px solid {primary_hex}"
         header_bg = primary_hex
         header_text = "#ffffff"
-        
     elif style_name == "Minimalist Left Ribbon":
         card_border = "1px solid #e0e0e0"
         left_ribbon_html = f'<div style="position: absolute; left: 0; top: 0; bottom: 0; width: 6px; background-color: {primary_hex};"></div>'
-        
     elif style_name == "Modern Gradient Top":
         card_border = "1px solid #e0e0e0"
         header_bg = f"linear-gradient(135deg, {primary_hex} 0%, #4f4f4f 100%)"
         header_text = "#ffffff"
-        
     elif style_name == "Double Thin Border":
         card_border = f"1px solid {primary_hex}"
-        # Handled inside structural template wrapper using nested inner inset outline div box 
-        
     elif style_name == "Soft Cream Vintage":
         card_bg = "#fdfbf7"
         card_border = "2px solid #dcd1bd"
         header_text = primary_hex
-        
     elif style_name == "Dark Mode Luxury":
         card_bg = "#121212"
         card_border = "1px solid #2d2d2d"
         header_bg = "#1a1a1a"
         header_text = "#ffffff"
-        
     elif style_name == "Diagonal Corner Accent":
         card_border = "1px solid #e0e0e0"
         corner_accent_html = f'<div style="position: absolute; right: -25px; top: -25px; width: 50px; height: 50px; background-color: {primary_hex}; transform: rotate(45deg); z-index: 10;"></div>'
-        
     elif style_name == "Bottom Accent Footer":
         card_border = "1px solid #e0e0e0"
         footer_bg_html = f'<div style="position: absolute; bottom: 0; left: 0; right: 0; height: 6px; background-color: {primary_hex};"></div>'
@@ -146,7 +134,6 @@ def compute_ticket_styles(style_name, primary_hex):
 
 styles = compute_ticket_styles(bg_style, primary_color)
 
-# Override dynamic overrides for color schema rules inside dark mode profiles
 active_text_color = "#ffffff" if bg_style == "Dark Mode Luxury" else primary_color
 sku_text_color = "#aaaaaa" if bg_style == "Dark Mode Luxury" else "#555555"
 preview_canvas_bg = styles["card_bg"]
@@ -157,7 +144,8 @@ st.write("Upload a file, customize styles, and print directly onto standard A4 s
 
 # --- LIVE PREVIEW WINDOW ---
 st.subheader("👀 Live Ticket Sample Preview")
-was_price_html = f'<div style="text-decoration: line-through; font-size: {price_size - 4}pt; color: #888; line-height: 1;">AED 879.00</div>' if show_was_price else ''
+# Swapped AED out for the traditional Arabic د.إ sign
+was_price_html = f'<div style="text-decoration: line-through; font-size: {price_size - 4}pt; color: #888; line-height: 1; direction: rtl; text-align: left;">789.00 د.إ</div>' if show_was_price else ''
 
 preview_logo_html = ""
 if logo_b64:
@@ -204,10 +192,10 @@ preview_html = f"""
     
     {preview_logo_html}
     
-    <div style="position: absolute; bottom: 10px; left: {'14px' if bg_style == 'Minimalist Left Ribbon' else '8px'};">
+    <div style="position: absolute; bottom: 10px; left: {'14px' if bg_style == 'Minimalist Left Ribbon' else '8px'}; line-height: 1;">
         {was_price_html}
-        <div style="color: {active_text_color}; font-size: {price_size + 4}px; font-weight: bold; line-height: 1.1;">
-            AED 799.00
+        <div style="color: {active_text_color}; font-size: {price_size + 4}px; font-weight: bold; direction: rtl; text-align: left;">
+            799.00 د.إ
         </div>
     </div>
     
@@ -270,14 +258,14 @@ if uploaded_file is not None:
             for idx, row in df.iterrows():
                 try:
                     price_val = float(row[mapped_cols["Price"]])
-                    price_text = f"AED {price_val:.2f}"
-                    was_price_text = f"AED {price_val * 1.15:.2f}" 
+                    price_text = f"{price_val:.2f} د.إ"
+                    was_price_text = f"{price_val * 1.15:.2f} د.إ" 
                 except:
-                    price_text = f"AED {row[mapped_cols['Price']]}"
+                    price_text = f"{row[mapped_cols['Price']]} د.إ"
                     was_price_text = ""
 
                 qr_b64 = generate_qr_base64(str(row[mapped_cols["URL"]]))
-                was_row_inner = f'<div style="text-decoration: line-through; font-size: {price_size - 4}pt; color: #888; margin-bottom: 1px;">{was_price_text}</div>' if (show_was_price and was_price_text) else ''
+                was_row_inner = f'<div style="text-decoration: line-through; font-size: {price_size - 4}pt; color: #888; margin-bottom: 1px; direction: rtl; text-align: left;">{was_price_text}</div>' if (show_was_price and was_price_text) else ''
 
                 card_logo_html = ""
                 if logo_b64:
@@ -328,7 +316,7 @@ if uploaded_file is not None:
                     
                     <div style="position: absolute; bottom: 6px; left: {'5mm' if bg_style == 'Minimalist Left Ribbon' else '6px'}; line-height: 1;">
                         {was_row_inner}
-                        <div style="color: {active_text_color}; font-size: {price_size}pt; font-weight: bold;">
+                        <div style="color: {active_text_color}; font-size: {price_size}pt; font-weight: bold; direction: rtl; text-align: left;">
                             {price_text}
                         </div>
                     </div>

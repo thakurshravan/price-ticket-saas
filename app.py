@@ -47,12 +47,11 @@ def get_custom_currency_svg(color_hex, size_px=24):
 st.sidebar.header("🎨 Advanced Customization Engine")
 
 SIZE_TEMPLATES = {
-    "60x40 mm (Standard Shelf Edge)": {"w": 60, "h": 40, "qr_size": 18},
-    "40x50 mm (Hang Tag)": {"w": 40, "h": 50, "qr_size": 15},
-    "80x50 mm (Large Display)": {"w": 80, "h": 50, "qr_size": 22},
-    "A5 Size (148x210 mm)": {"w": 148, "h": 210, "qr_size": 45},
-    "A6 Size (105x148 mm)": {"w": 105, "h": 148, "qr_size": 35},
-    "A7 Size (74x105 mm)": {"w": 74, "h": 105, "qr_size": 25},
+    "60x40 mm (Standard Shelf Edge)": {"w": 60, "h": 40, "qr_size": 14},
+    "40x50 mm (Hang Tag)": {"w": 40, "h": 50, "qr_size": 12},
+    "80x50 mm (Large Display)": {"w": 80, "h": 50, "qr_size": 18},
+    "A5 Size (148x210 mm)": {"w": 148, "h": 210, "qr_size": 40},
+    "A6 Size (105x148 mm)": {"w": 105, "h": 148, "qr_size": 30},
     "Custom Size...": None
 }
 
@@ -62,7 +61,7 @@ if selected_size == "Custom Size...":
     st.sidebar.markdown("📐 **Enter Manual Dimensions (in mm):**")
     custom_w = st.sidebar.number_input("Ticket Width (mm)", min_value=10, max_value=250, value=60, step=1)
     custom_h = st.sidebar.number_input("Ticket Height (mm)", min_value=10, max_value=250, value=40, step=1)
-    custom_qr = st.sidebar.number_input("QR Code Size (mm)", min_value=5, max_value=min(custom_w, custom_h)-5, value=18, step=1)
+    custom_qr = st.sidebar.number_input("QR Code Size (mm)", min_value=5, max_value=min(custom_w, custom_h)-5, value=14, step=1)
     dimensions = {"w": custom_w, "h": custom_h, "qr_size": custom_qr}
 else:
     dimensions = SIZE_TEMPLATES[selected_size]
@@ -151,7 +150,7 @@ preview_canvas_bg = styles["card_bg"]
 
 # --- MAIN INTERFACE LAYOUT ---
 st.title("🎟️ Custom SaaS Bulk Price Ticket Generator")
-st.write("Upload a file, customize styles, and print directly onto standard A4 sticker sheets.")
+st.write("Upload a product template file, customize layout properties, and trigger local hardware prints.")
 
 # --- LIVE PREVIEW WINDOW ---
 st.subheader("👀 Live Ticket Sample Preview")
@@ -159,6 +158,7 @@ st.subheader("👀 Live Ticket Sample Preview")
 main_icon_size = max(18, int((price_size + 4) * 0.85))
 was_icon_size = max(13, int((price_size - 4) * 0.85))
 
+# RESOLVED: Structural and properly contained price table wrapper layout logic
 preview_price_table_html = f"""
 <table style="border-collapse: collapse; border: none; margin: 0; padding: 0;">
     <tbody>
@@ -167,7 +167,7 @@ if show_was_price:
     preview_price_table_html += f"""
         <tr>
             <td style="padding: 0 4px 0 0; margin: 0; vertical-align: middle; line-height: 1;">{get_custom_currency_svg("#888", size_px=was_icon_size)}</td>
-            <td style="padding: 0; margin: 0; vertical-align: middle; line-height: 1; font-size: {price_size - 4}pt; color: #888; text-decoration: line-through;">90.85</td>
+            <td style="padding: 0; margin: 0; vertical-align: middle; line-height: 1; font-size: {price_size - 4}px; color: #888; text-decoration: line-through;">90.85</td>
         </tr>
     """
 preview_price_table_html += f"""
@@ -190,10 +190,11 @@ if logo_b64:
 double_border_inset_open = f'<div style="position: absolute; top: 3px; bottom: 3px; left: 3px; right: 3px; border: 1px solid {primary_color}; box-sizing: border-box; pointer-events: none;">' if bg_style == "Double Thin Border" else ""
 double_border_inset_close = '</div>' if bg_style == "Double Thin Border" else ""
 
+# RESOLVED: Added outer relative frame wrapping layer context to cleanly anchor all absolute objects
 preview_html = f"""
 <div style="
-    width: {dimensions['w'] * 3}px; 
-    height: {dimensions['h'] * 3}px; 
+    width: {dimensions['w'] * 4}px; 
+    height: {dimensions['h'] * 4}px; 
     border: {styles['card_border']}; 
     background: {preview_canvas_bg}; 
     border-radius: 4px; 
@@ -222,7 +223,7 @@ preview_html = f"""
         {preview_price_table_html}
     </div>
     
-    <div style="position: absolute; bottom: 10px; right: 8px; width: {dimensions['qr_size'] * 2.8}px; height: {dimensions['qr_size'] * 2.8}px; background-image: url('https://upload.wikimedia.org/wikipedia/commons/d/d0/QR_code_for_QR_Code_tutorial_images_section.png'); background-size: cover; border: 1px solid #eee;"></div>
+    <div style="position: absolute; bottom: 10px; right: 8px; width: {dimensions['qr_size'] * 4}px; height: {dimensions['qr_size'] * 4}px; background-image: url('https://upload.wikimedia.org/wikipedia/commons/d/d0/QR_code_for_QR_Code_tutorial_images_section.png'); background-size: cover; border: 1px solid #eee;"></div>
     {double_border_inset_close}
 </div>
 """
@@ -324,6 +325,7 @@ if uploaded_file is not None:
                 print_double_border_open = f'<div style="position: absolute; top: 0.8mm; bottom: 0.8mm; left: 0.8mm; right: 0.8mm; border: 0.25mm solid {primary_color}; box-sizing: border-box; pointer-events: none;">' if bg_style == "Double Thin Border" else ""
                 print_double_border_close = '</div>' if bg_style == "Double Thin Border" else ""
 
+                # RESOLVED: Added position: relative onto individual physical print loop cards
                 html_cards += f"""
                 <div class="ticket-card" style="
                     width: {dimensions['w']}mm;

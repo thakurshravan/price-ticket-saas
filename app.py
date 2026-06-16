@@ -15,8 +15,11 @@ def hex_to_rgb(hex_str):
     return tuple(int(hex_str[i:i+2], 16) for i in (0, 2, 4))
 
 def generate_qr_base64(url):
+    # Fallback to a placeholder string if URL is empty or nan
+    if pd.isna(url) or not str(url).strip():
+        url = "https://example.com"
     qr = qrcode.QRCode(version=1, box_size=4, border=1)
-    qr.add_data(url)
+    qr.add_data(str(url))
     qr.make(fit=True)
     img = qr.make_image(fill_color="black", back_color="white")
     buffered = io.BytesIO()
@@ -32,7 +35,6 @@ def process_logo_to_base64(uploaded_logo):
             return None
     return None
 
-# Re-architected SVG with absolute grid scaling properties to completely isolate dimensions
 def get_custom_currency_svg(color_hex, size_px=24):
     return f"""
     <svg width="{size_px}px" height="{size_px}px" viewBox="0 0 200 200" style="display: block; overflow: visible;" xmlns="http://www.w3.org/2000/svg">
@@ -158,7 +160,6 @@ st.subheader("👀 Live Ticket Sample Preview")
 main_icon_size = max(18, int((price_size + 4) * 0.85))
 was_icon_size = max(13, int((price_size - 4) * 0.85))
 
-# Anti-Overlap Layout: Structural table system forcing zero intersection
 preview_price_table_html = f"""
 <table style="border-collapse: collapse; border: none; margin: 0; padding: 0;">
 """
@@ -177,7 +178,6 @@ preview_price_table_html += f"""
 </table>
 """
 
-# New Feature: Top right corner dynamic brand logo fit layout
 preview_logo_html = ""
 if logo_b64:
     preview_logo_html = f"""
@@ -286,10 +286,13 @@ if uploaded_file is not None:
                     formatted_num = str(row[mapped_cols['Price']])
                     was_formatted_num = ""
 
+                # FIXED: Generate the QR code inline for each entry loop iteration
+                target_url = row[mapped_cols["URL"]]
+                qr_b64 = generate_qr_base64(target_url)
+
                 print_main_icon_size = max(16, int(price_size * 0.85))
                 print_was_icon_size = max(11, int((price_size - 4) * 0.85))
 
-                # Physical item printing price matrix
                 print_price_table_html = f"""
                 <table style="border-collapse: collapse; border: none; margin: 0; padding: 0;">
                 """
@@ -308,7 +311,6 @@ if uploaded_file is not None:
                 </table>
                 """
 
-                # Printable Logo configuration with dynamic fitting limits 
                 card_logo_html = ""
                 if logo_b64:
                     card_logo_html = f"""

@@ -159,7 +159,6 @@ st.subheader("👀 Live Ticket Sample Preview")
 main_icon_size = max(18, int((price_size + 4) * 0.85))
 was_icon_size = max(13, int((price_size - 4) * 0.85))
 
-# Anti-Overlap Layout: Fixed table structural code
 preview_price_table_html = f"""
 <table style="border-collapse: collapse; border: none; margin: 0; padding: 0;">
     <tbody>
@@ -288,7 +287,6 @@ if uploaded_file is not None:
                     formatted_num = str(row[mapped_cols['Price']])
                     was_formatted_num = ""
 
-                # Inline QR generation loop fix
                 target_url = row[mapped_cols["URL"]]
                 qr_b64 = generate_qr_base64(target_url)
 

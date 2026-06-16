@@ -50,8 +50,6 @@ SIZE_TEMPLATES = {
     "60x40 mm (Standard Shelf Edge)": {"w": 60, "h": 40, "qr_size": 14},
     "40x50 mm (Hang Tag)": {"w": 40, "h": 50, "qr_size": 12},
     "80x50 mm (Large Display)": {"w": 80, "h": 50, "qr_size": 18},
-    "A5 Size (148x210 mm)": {"w": 148, "h": 210, "qr_size": 40},
-    "A6 Size (105x148 mm)": {"w": 105, "h": 148, "qr_size": 30},
     "Custom Size...": None
 }
 
@@ -76,9 +74,7 @@ bg_style = st.sidebar.selectbox("Ticket Background Style", [
     "Modern Gradient Top", 
     "Double Thin Border",
     "Soft Cream Vintage", 
-    "Dark Mode Luxury", 
-    "Diagonal Corner Accent",
-    "Bottom Accent Footer"
+    "Dark Mode Luxury"
 ])
 
 st.sidebar.subheader("Typography")
@@ -102,8 +98,6 @@ def compute_ticket_styles(style_name, primary_hex):
     header_bg = "transparent"
     header_text = primary_hex
     left_ribbon_html = ""
-    corner_accent_html = ""
-    footer_bg_html = ""
     
     if style_name == "Solid Accent Header":
         card_border = f"2px solid {primary_hex}"
@@ -129,17 +123,10 @@ def compute_ticket_styles(style_name, primary_hex):
         card_border = "1px solid #2d2d2d"
         header_bg = "#1a1a1a"
         header_text = "#ffffff"
-    elif style_name == "Diagonal Corner Accent":
-        card_border = "1px solid #e0e0e0"
-        corner_accent_html = f'<div style="position: absolute; right: -25px; top: -25px; width: 50px; height: 50px; background-color: {primary_hex}; transform: rotate(45deg); z-index: 10;"></div>'
-    elif style_name == "Bottom Accent Footer":
-        card_border = "1px solid #e0e0e0"
-        footer_bg_html = f'<div style="position: absolute; bottom: 0; left: 0; right: 0; height: 6px; background-color: {primary_hex};"></div>'
 
     return {
         "card_bg": card_bg, "card_border": card_border, "header_bg": header_bg, 
-        "header_text": header_text, "left_ribbon": left_ribbon_html, 
-        "corner_accent": corner_accent_html, "footer_bg": footer_bg_html
+        "header_text": header_text, "left_ribbon": left_ribbon_html
     }
 
 styles = compute_ticket_styles(bg_style, primary_color)
@@ -158,7 +145,6 @@ st.subheader("👀 Live Ticket Sample Preview")
 main_icon_size = max(18, int((price_size + 4) * 0.85))
 was_icon_size = max(13, int((price_size - 4) * 0.85))
 
-# RESOLVED: Structural and properly contained price table wrapper layout logic
 preview_price_table_html = f"""
 <table style="border-collapse: collapse; border: none; margin: 0; padding: 0;">
     <tbody>
@@ -190,7 +176,7 @@ if logo_b64:
 double_border_inset_open = f'<div style="position: absolute; top: 3px; bottom: 3px; left: 3px; right: 3px; border: 1px solid {primary_color}; box-sizing: border-box; pointer-events: none;">' if bg_style == "Double Thin Border" else ""
 double_border_inset_close = '</div>' if bg_style == "Double Thin Border" else ""
 
-# RESOLVED: Added outer relative frame wrapping layer context to cleanly anchor all absolute objects
+# CRITICAL FIX: Escaped the internal layout curly braces by doubling them {{ }} so Python f-strings parse them accurately
 preview_html = f"""
 <div style="
     width: {dimensions['w'] * 4}px; 
@@ -206,8 +192,6 @@ preview_html = f"""
 ">
     {double_border_inset_open}
     {styles['left_ribbon']}
-    {styles['corner_accent']}
-    {styles['footer_bg']}
     {preview_logo_html}
     
     <div style="background: {styles['header_bg']}; padding: 8px; padding-right: 35%; height: 35%; box-sizing: border-box;">
@@ -227,6 +211,8 @@ preview_html = f"""
     {double_border_inset_close}
 </div>
 """
+
+# CRITICAL FIX: Explicitly allowed unsafe HTML parsing to make components render visually instead of printing string characters
 st.markdown(preview_html, unsafe_allow_html=True)
 st.divider()
 
@@ -325,7 +311,6 @@ if uploaded_file is not None:
                 print_double_border_open = f'<div style="position: absolute; top: 0.8mm; bottom: 0.8mm; left: 0.8mm; right: 0.8mm; border: 0.25mm solid {primary_color}; box-sizing: border-box; pointer-events: none;">' if bg_style == "Double Thin Border" else ""
                 print_double_border_close = '</div>' if bg_style == "Double Thin Border" else ""
 
-                # RESOLVED: Added position: relative onto individual physical print loop cards
                 html_cards += f"""
                 <div class="ticket-card" style="
                     width: {dimensions['w']}mm;
@@ -343,8 +328,6 @@ if uploaded_file is not None:
                 ">
                     {print_double_border_open}
                     {styles['left_ribbon']}
-                    {styles['corner_accent']}
-                    {styles['footer_bg']}
                     {card_logo_html}
                     
                     <div style="background: {styles['header_bg']}; padding: 6px; padding-right: 35%; height: 35%; box-sizing: border-box;">

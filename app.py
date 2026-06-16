@@ -15,7 +15,6 @@ def hex_to_rgb(hex_str):
     return tuple(int(hex_str[i:i+2], 16) for i in (0, 2, 4))
 
 def generate_qr_base64(url):
-    # Fallback to a placeholder string if URL is empty or nan
     if pd.isna(url) or not str(url).strip():
         url = "https://example.com"
     qr = qrcode.QRCode(version=1, box_size=4, border=1)
@@ -160,21 +159,24 @@ st.subheader("👀 Live Ticket Sample Preview")
 main_icon_size = max(18, int((price_size + 4) * 0.85))
 was_icon_size = max(13, int((price_size - 4) * 0.85))
 
+# Anti-Overlap Layout: Fixed table structural code
 preview_price_table_html = f"""
 <table style="border-collapse: collapse; border: none; margin: 0; padding: 0;">
+    <tbody>
 """
 if show_was_price:
     preview_price_table_html += f"""
-    <tr>
-        <td style="padding: 0 4px 0 0; margin: 0; vertical-align: middle; line-height: 1;">{get_custom_currency_svg("#888", size_px=was_icon_size)}</td>
-        <td style="padding: 0; margin: 0; vertical-align: middle; line-height: 1; font-size: {price_size - 4}pt; color: #888; text-decoration: line-through;">90.85</td>
-    </tr>
+        <tr>
+            <td style="padding: 0 4px 0 0; margin: 0; vertical-align: middle; line-height: 1;">{get_custom_currency_svg("#888", size_px=was_icon_size)}</td>
+            <td style="padding: 0; margin: 0; vertical-align: middle; line-height: 1; font-size: {price_size - 4}pt; color: #888; text-decoration: line-through;">90.85</td>
+        </tr>
     """
 preview_price_table_html += f"""
-    <tr>
-        <td style="padding: 0 4px 0 0; margin: 0; vertical-align: middle; line-height: 1;">{get_custom_currency_svg(active_text_color, size_px=main_icon_size)}</td>
-        <td style="padding: 0; margin: 0; vertical-align: middle; line-height: 1; font-size: {price_size + 4}px; font-weight: bold; color: {active_text_color};">79.00</td>
-    </tr>
+        <tr>
+            <td style="padding: 0 4px 0 0; margin: 0; vertical-align: middle; line-height: 1;">{get_custom_currency_svg(active_text_color, size_px=main_icon_size)}</td>
+            <td style="padding: 0; margin: 0; vertical-align: middle; line-height: 1; font-size: {price_size + 4}px; font-weight: bold; color: {active_text_color};">79.00</td>
+        </tr>
+    </tbody>
 </table>
 """
 
@@ -286,7 +288,7 @@ if uploaded_file is not None:
                     formatted_num = str(row[mapped_cols['Price']])
                     was_formatted_num = ""
 
-                # FIXED: Generate the QR code inline for each entry loop iteration
+                # Inline QR generation loop fix
                 target_url = row[mapped_cols["URL"]]
                 qr_b64 = generate_qr_base64(target_url)
 
@@ -295,19 +297,21 @@ if uploaded_file is not None:
 
                 print_price_table_html = f"""
                 <table style="border-collapse: collapse; border: none; margin: 0; padding: 0;">
+                    <tbody>
                 """
                 if show_was_price and was_formatted_num:
                     print_price_table_html += f"""
-                    <tr>
-                        <td style="padding: 0 4px 0 0; margin: 0; vertical-align: middle; line-height: 1;">{get_custom_currency_svg("#888", size_px=print_was_icon_size)}</td>
-                        <td style="padding: 0; margin: 0; vertical-align: middle; line-height: 1; font-size: {price_size - 4}pt; color: #888; text-decoration: line-through;">{was_formatted_num}</td>
-                    </tr>
+                        <tr>
+                            <td style="padding: 0 4px 0 0; margin: 0; vertical-align: middle; line-height: 1;">{get_custom_currency_svg("#888", size_px=print_was_icon_size)}</td>
+                            <td style="padding: 0; margin: 0; vertical-align: middle; line-height: 1; font-size: {price_size - 4}pt; color: #888; text-decoration: line-through;">{was_formatted_num}</td>
+                        </tr>
                     """
                 print_price_table_html += f"""
-                    <tr>
-                        <td style="padding: 0 4px 0 0; margin: 0; vertical-align: middle; line-height: 1;">{get_custom_currency_svg(active_text_color, size_px=print_main_icon_size)}</td>
-                        <td style="padding: 0; margin: 0; vertical-align: middle; line-height: 1; font-size: {price_size}pt; font-weight: bold; color: {active_text_color};">{formatted_num}</td>
-                    </tr>
+                        <tr>
+                            <td style="padding: 0 4px 0 0; margin: 0; vertical-align: middle; line-height: 1;">{get_custom_currency_svg(active_text_color, size_px=print_main_icon_size)}</td>
+                            <td style="padding: 0; margin: 0; vertical-align: middle; line-height: 1; font-size: {price_size}pt; font-weight: bold; color: {active_text_color};">{formatted_num}</td>
+                        </tr>
+                    </tbody>
                 </table>
                 """
 

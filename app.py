@@ -183,7 +183,19 @@ if logo_b64:
 double_border_inset_open = f'<div style="position: absolute; top: 3px; bottom: 3px; left: 3px; right: 3px; border: 1px solid {primary_color}; box-sizing: border-box; pointer-events: none;">' if bg_style == "Double Thin Border" else ""
 double_border_inset_close = '</div>' if bg_style == "Double Thin Border" else ""
 
-# Layout elements updated to stack automatically
+preview_code_above_qr_html = f"""
+<div style="position: absolute; bottom: calc(10px + {dimensions['qr_size'] * 4}px + 6px); right: 8px; font-weight: bold; font-size: 11px; text-align: center; color: {code_text_color}; z-index: 10;">
+    SKU
+</div>
+"""
+
+preview_highlights_html = f"""
+<div style="color: #333333; font-size: 11px; line-height: 1.35; margin-top: 4px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical;">
+    <strong style="text-transform: uppercase; font-weight: bold; display: block; margin-bottom: 2px;">PRODUCT HIGHLIGHTS:</strong>
+    • 100% Genuine Material<br>• Premium Scratch Protection
+</div>
+"""
+
 preview_html = f"""
 <div style="
     width: {dimensions['w'] * 4}px; 
@@ -209,13 +221,10 @@ preview_html = f"""
     
     <div style="position: absolute; top: 28%; bottom: 8px; left: {'14px' if bg_style == 'Minimalist Left Ribbon' else '8px'}; width: 58%; display: flex; flex-direction: column; justify-content: space-between; box-sizing: border-box; text-align: left;">
         <div>
-            <div style="color: {code_text_color}; font-size: 11px; font-weight: bold; margin-bottom: 4px; white-space: nowrap;">
+            <div style="color: {code_text_color}; font-size: 11px; font-weight: bold; white-space: nowrap;">
                 {preview_left_label}
             </div>
-            <div style="color: #333333; font-size: 11px; line-height: 1.35; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical;">
-                <strong style="text-transform: uppercase; font-weight: bold; display: block; margin-bottom: 2px;">PRODUCT HIGHLIGHTS:</strong>
-                • 100% Genuine Material<br>• Premium Scratch Protection
-            </div>
+            {preview_highlights_html}
         </div>
         <div>
             {preview_price_table_html}
@@ -358,6 +367,12 @@ if uploaded_file is not None:
                 print_double_border_open = f'<div style="position: absolute; top: 0.8mm; bottom: 0.8mm; left: 0.8mm; right: 0.8mm; border: 0.25mm solid {primary_color}; box-sizing: border-box; pointer-events: none;">' if bg_style == "Double Thin Border" else ""
                 print_double_border_close = '</div>' if bg_style == "Double Thin Border" else ""
 
+                print_code_above_qr_html = f"""
+                <div style="position: absolute; bottom: calc(4px + {dimensions['qr_size']}mm + 1.5mm); right: 4px; font-weight: bold; font-size: {max(8.0, 8.0 * (scale_factor * 0.72))}pt; text-align: center; color: {code_text_color}; z-index: 10;">
+                    SKU
+                </div>
+                """
+
                 print_highlights_html = ""
                 if highlights_val:
                     print_highlights_html = f"""
@@ -373,7 +388,6 @@ if uploaded_file is not None:
 
                 left_side_code_label = f"ITEM CODE: {item_code_val}" if is_intl_card_size else item_code_val
 
-                # Entire layout converted into a reliable left/right structure
                 html_cards += f"""
                 <div class="ticket-card" style="
                     width: {dimensions['w']}mm;

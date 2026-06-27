@@ -139,6 +139,10 @@ active_text_color = "#ffffff" if bg_style == "Dark Mode Luxury" else primary_col
 code_text_color = "#aaaaaa" if bg_style == "Dark Mode Luxury" else "#555555"
 preview_canvas_bg = styles["card_bg"]
 
+# Determine if standard labels show up based on template properties
+is_intl_card_size = "Size Card" in selected_size
+preview_left_label = "ITEM CODE: 1011480" if is_intl_card_size else "1011480"
+
 # --- MAIN INTERFACE LAYOUT ---
 st.title("🎟️ Custom Bulk Price Ticket Generator")
 st.write("Upload a product template file, customize layout properties, and trigger local hardware prints.")
@@ -172,7 +176,7 @@ preview_price_table_html += f"""
 preview_logo_html = ""
 if logo_b64:
     preview_logo_html = f"""
-    <div style="position: absolute; top: 4px; right: 8px; max-width: 30%; max-height: 24%; display: flex; justify-content: flex-end; align-items: center; z-index: 20;">
+    <div style="position: absolute; top: 4px; right: 8px; max-width: 25%; max-height: 20%; display: flex; justify-content: flex-end; align-items: center; z-index: 20;">
         <img src="data:image/png;base64,{logo_b64}" style="max-width: 100%; max-height: 100%; object-fit: contain;" />
     </div>
     """
@@ -180,15 +184,15 @@ if logo_b64:
 double_border_inset_open = f'<div style="position: absolute; top: 3px; bottom: 3px; left: 3px; right: 3px; border: 1px solid {primary_color}; box-sizing: border-box; pointer-events: none;">' if bg_style == "Double Thin Border" else ""
 double_border_inset_close = '</div>' if bg_style == "Double Thin Border" else ""
 
+# Layout text above QR code modified to "SKU"
 preview_code_above_qr_html = f"""
 <div style="position: absolute; bottom: calc(10px + {dimensions['qr_size'] * 4}px + 6px); right: 8px; font-weight: bold; font-size: 11px; text-align: center; color: {code_text_color}; z-index: 10;">
-    1011480
+    SKU
 </div>
 """
 
-# Preview scales dynamically based on bounding box constraints
 preview_highlights_html = f"""
-<div style="position: absolute; top: 44%; left: {'14px' if bg_style == 'Minimalist Left Ribbon' else '8px'}; color: #777777; font-size: 10px; max-width: 55%; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.3;">
+<div style="position: absolute; bottom: 65px; left: {'14px' if bg_style == 'Minimalist Left Ribbon' else '8px'}; color: #444444; font-size: 11px; max-width: 58%; max-height: 35%; overflow: hidden; line-height: 1.3; font-weight: 500;">
     • 100% Genuine Material<br>• Premium Scratch Protection
 </div>
 """
@@ -210,13 +214,13 @@ preview_html = f"""
     {styles['left_ribbon']}
     {preview_logo_html}
     
-    <div style="background: {styles['header_bg']}; padding: 6px 8px; padding-right: 35%; height: 26%; box-sizing: border-box; overflow: hidden;">
-        <div style="color: {styles['header_text']}; font-size: {title_size + 4}px; line-height: 1.2; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
-            <strong style="text-transform: uppercase;">HYPHEN</strong>: MagSafe AIRE Clear Case for iPhone 13, Clear
+    <div style="background: {styles['header_bg']}; padding: 4px 12px; display: flex; align-items: center; justify-content: center; text-align: center; height: 26%; box-sizing: border-box; overflow: hidden;">
+        <div style="color: {styles['header_text']}; font-size: {title_size + 4}px; line-height: 1.25; font-weight: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; width: 100%;">
+            <strong style="text-transform: uppercase; font-weight: 900;">HYPHEN</strong>: MagSafe AIRE Clear Case for iPhone 13, Clear
         </div>
     </div>
-    <div style="position: absolute; top: 32%; left: {'14px' if bg_style == 'Minimalist Left Ribbon' else '8px'}; color: {code_text_color}; font-size: 11px; font-weight: bold;">
-        ITEM CODE: 1011480
+    <div style="position: absolute; top: 31%; left: {'14px' if bg_style == 'Minimalist Left Ribbon' else '8px'}; color: {code_text_color}; font-size: 11px; font-weight: bold;">
+        {preview_left_label}
     </div>
     
     {preview_highlights_html}
@@ -324,15 +328,9 @@ if uploaded_file is not None:
                 print_main_icon_size = max(16, int(price_size * 0.85))
                 print_was_icon_size = max(11, int((price_size - 4) * 0.85))
 
-                # --- ADVANCED DYNAMIC RESPONSIVE TYPOGRAPHY INTEL ---
-                # Scales font sizes linearly when working with massive cards (A4, A5, A6 layouts)
                 scale_factor = max(1.0, dimensions['w'] / 60.0)
-                calculated_highlights_pt = max(7.5, 7.5 * (scale_factor * 0.75))
+                calculated_highlights_pt = max(7.5, 8.0 * (scale_factor * 0.72))
                 
-                # Dynamic top boundary position rules to stop collisions
-                top_offset_pct = 32
-                highlights_top_pct = 43
-
                 print_price_table_html = f"""
                 <table style="border-collapse: collapse; border: none; margin: 0; padding: 0;">
                     <tbody>
@@ -356,7 +354,7 @@ if uploaded_file is not None:
                 card_logo_html = ""
                 if logo_b64:
                     card_logo_html = f"""
-                    <div style="position: absolute; top: 1mm; right: 2mm; max-width: 30%; max-height: 24%; display: flex; justify-content: flex-end; align-items: center; z-index: 20;">
+                    <div style="position: absolute; top: 1mm; right: 2mm; max-width: 25%; max-height: 20%; display: flex; justify-content: flex-end; align-items: center; z-index: 20;">
                         <img src="data:image/png;base64,{logo_b64}" style="max-width: 100%; max-height: 100%; object-fit: contain;" />
                     </div>
                     """
@@ -364,23 +362,27 @@ if uploaded_file is not None:
                 print_double_border_open = f'<div style="position: absolute; top: 0.8mm; bottom: 0.8mm; left: 0.8mm; right: 0.8mm; border: 0.25mm solid {primary_color}; box-sizing: border-box; pointer-events: none;">' if bg_style == "Double Thin Border" else ""
                 print_double_border_close = '</div>' if bg_style == "Double Thin Border" else ""
 
+                # Text identifier above QR code set to "SKU"
                 print_code_above_qr_html = f"""
-                <div style="position: absolute; bottom: calc(4px + {dimensions['qr_size']}mm + 1.5mm); right: 4px; font-weight: bold; font-size: {max(8.0, 8.0 * (scale_factor * 0.75))}pt; text-align: center; color: {code_text_color}; z-index: 10;">
-                    {item_code_val}
+                <div style="position: absolute; bottom: calc(4px + {dimensions['qr_size']}mm + 1.5mm); right: 4px; font-weight: bold; font-size: {max(8.0, 8.0 * (scale_factor * 0.72))}pt; text-align: center; color: {code_text_color}; z-index: 10;">
+                    SKU
                 </div>
                 """
 
                 print_highlights_html = ""
                 if highlights_val:
                     print_highlights_html = f"""
-                    <div style="position: absolute; top: {highlights_top_pct}%; left: {'5mm' if bg_style == 'Minimalist Left Ribbon' else '6px'}; color: #666666; font-size: {calculated_highlights_pt}pt; max-width: 58%; display: -webkit-box; -webkit-line-clamp: 5; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.35;">
+                    <div style="position: absolute; bottom: calc(8px + {max(16, int(price_size * 1.2))}pt); left: {'5mm' if bg_style == 'Minimalist Left Ribbon' else '6px'}; color: #333333; font-size: {calculated_highlights_pt}pt; max-width: 58%; max-height: 38%; overflow: hidden; line-height: 1.35; font-weight: 500;">
                         {highlights_val}
                     </div>
                     """
 
                 title_header_content = f'{row[mapped_cols["Product Name"]]}'
                 if brand_val:
-                    title_header_content = f'<strong style="text-transform: uppercase;">{brand_val}</strong>: {title_header_content}'
+                    title_header_content = f'<strong style="text-transform: uppercase; font-weight: 900;">{brand_val}</strong>: {title_header_content}'
+
+                # Remove string label prefix if not international layout size card
+                left_side_code_label = f"ITEM CODE: {item_code_val}" if is_intl_card_size else item_code_val
 
                 html_cards += f"""
                 <div class="ticket-card" style="
@@ -401,13 +403,13 @@ if uploaded_file is not None:
                     {styles['left_ribbon']}
                     {card_logo_html}
                     
-                    <div style="background: {styles['header_bg']}; padding: 4px 6px; padding-right: 35%; height: 26%; box-sizing: border-box; overflow: hidden;">
-                        <div style="color: {styles['header_text']}; font-size: {title_size}pt; line-height: 1.1; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
+                    <div style="background: {styles['header_bg']}; padding: 4px 6px; display: flex; align-items: center; justify-content: center; text-align: center; height: 26%; box-sizing: border-box; overflow: hidden;">
+                        <div style="color: {styles['header_text']}; font-size: {title_size}pt; line-height: 1.2; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; width: 100%;">
                             {title_header_content}
                         </div>
                     </div>
-                    <div style="position: absolute; top: {top_offset_pct}%; left: {'5mm' if bg_style == 'Minimalist Left Ribbon' else '6px'}; color: {code_text_color}; font-size: {max(8.0, 8.0 * (scale_factor * 0.75))}pt; font-weight: bold;">
-                        ITEM CODE: {item_code_val}
+                    <div style="position: absolute; top: 31%; left: {'5mm' if bg_style == 'Minimalist Left Ribbon' else '6px'}; color: {code_text_color}; font-size: {max(8.0, 8.0 * (scale_factor * 0.72))}pt; font-weight: bold;">
+                        {left_side_code_label}
                     </div>
                     
                     {print_highlights_html}

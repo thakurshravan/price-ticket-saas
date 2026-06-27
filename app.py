@@ -34,15 +34,6 @@ def process_logo_to_base64(uploaded_logo):
             return None
     return None
 
-def get_custom_currency_svg(color_hex, size_px=24):
-    return f"""
-    <svg width="{size_px}px" height="{size_px}px" viewBox="0 0 200 200" style="display: block; overflow: visible;" xmlns="http://www.w3.org/2000/svg">
-        <path d="M40 20 C 80 20, 110 30, 130 60 C 145 80, 150 105, 150 130 C 150 155, 140 170, 125 180 C 105 192, 70 195, 40 195 L 40 180 C 70 180, 95 175, 110 165 C 122 155, 128 142, 128 125 C 128 105, 122 88, 108 75 C 92 60, 68 55, 40 55 Z" fill="{color_hex}"/>
-        <path d="M20 80 L 175 80 C 185 80, 190 88, 185 95 C 180 102, 170 102, 160 102 L 20 102 C 10 102, 5 95, 10 88 C 15 82, 20 80, 20 80 Z" fill="{color_hex}"/>
-        <path d="M20 115 L 175 115 C 185 115, 190 123, 185 130 C 180 137, 170 137, 160 137 L 20 137 C 10 137, 5 130, 10 123 C 15 117, 20 115, 20 115 Z" fill="{color_hex}"/>
-    </svg>
-    """
-
 # --- SIDEBAR: CONFIGURATION ---
 st.sidebar.header("🎨 Advanced Customization Engine")
 
@@ -149,23 +140,20 @@ st.write("Upload a product template file, customize layout properties, and trigg
 # --- LIVE PREVIEW WINDOW ---
 st.subheader("👀 Live Ticket Sample Preview")
 
-main_icon_size = max(18, int((price_size + 4) * 0.85))
-was_icon_size = max(13, int((price_size - 4) * 0.85))
-
 preview_price_table_html = f"""
-<table style="border-collapse: collapse; border: none; margin: 0; padding: 0;">
+<table style="border-collapse: collapse; border: none; margin: 0; padding: 0; font-family: {web_font};">
     <tbody>
 """
 if show_was_price:
     preview_price_table_html += f"""
         <tr>
-            <td style="padding: 0 4px 0 0; margin: 0; vertical-align: middle; line-height: 1;">{get_custom_currency_svg("#888", size_px=was_icon_size)}</td>
+            <td style="padding: 0 6px 0 0; margin: 0; vertical-align: middle; line-height: 1; font-size: {price_size - 6}px; color: #888; font-weight: bold;">AED</td>
             <td style="padding: 0; margin: 0; vertical-align: middle; line-height: 1; font-size: {price_size - 4}px; color: #888; text-decoration: line-through;">90.85</td>
         </tr>
     """
 preview_price_table_html += f"""
         <tr>
-            <td style="padding: 0 4px 0 0; margin: 0; vertical-align: middle; line-height: 1;">{get_custom_currency_svg(active_text_color, size_px=main_icon_size)}</td>
+            <td style="padding: 0 6px 0 0; margin: 0; vertical-align: middle; line-height: 1; font-size: {price_size - 2}px; color: {active_text_color}; font-weight: bold;">AED</td>
             <td style="padding: 0; margin: 0; vertical-align: middle; line-height: 1; font-size: {price_size + 4}px; font-weight: bold; color: {active_text_color};">79.00</td>
         </tr>
     </tbody>
@@ -329,27 +317,24 @@ if uploaded_file is not None:
                 target_url = row[mapped_cols["URL"]]
                 qr_b64 = generate_qr_base64(target_url)
 
-                print_main_icon_size = max(16, int(price_size * 0.85))
-                print_was_icon_size = max(11, int((price_size - 4) * 0.85))
-
                 scale_factor = max(1.0, dimensions['w'] / 60.0)
                 calculated_highlights_pt = max(7.5, 8.0 * (scale_factor * 0.72))
                 calculated_labels_pt = max(8.0, 8.0 * (scale_factor * 0.72))
                 
                 print_price_table_html = f"""
-                <table style="border-collapse: collapse; border: none; margin: 0; padding: 0;">
+                <table style="border-collapse: collapse; border: none; margin: 0; padding: 0; font-family: {web_font};">
                     <tbody>
                 """
                 if show_was_price and was_formatted_num:
                     print_price_table_html += f"""
                         <tr>
-                            <td style="padding: 0 4px 0 0; margin: 0; vertical-align: middle; line-height: 1;">{get_custom_currency_svg("#888", size_px=print_was_icon_size)}</td>
+                            <td style="padding: 0 4px 0 0; margin: 0; vertical-align: middle; line-height: 1; font-size: {max(8.0, (price_size - 6) * scale_factor)}pt; color: #888; font-weight: bold;">AED</td>
                             <td style="padding: 0; margin: 0; vertical-align: middle; line-height: 1; font-size: {price_size - 4}pt; color: #888; text-decoration: line-through;">{was_formatted_num}</td>
                         </tr>
                     """
                 print_price_table_html += f"""
                         <tr>
-                            <td style="padding: 0 4px 0 0; margin: 0; vertical-align: middle; line-height: 1;">{get_custom_currency_svg(active_text_color, size_px=print_main_icon_size)}</td>
+                            <td style="padding: 0 4px 0 0; margin: 0; vertical-align: middle; line-height: 1; font-size: {max(10.0, (price_size - 2) * scale_factor)}pt; color: {active_text_color}; font-weight: bold;">AED</td>
                             <td style="padding: 0; margin: 0; vertical-align: middle; line-height: 1; font-size: {price_size}pt; font-weight: bold; color: {active_text_color};">{formatted_num}</td>
                         </tr>
                     </tbody>
@@ -368,7 +353,7 @@ if uploaded_file is not None:
                 print_double_border_close = '</div>' if bg_style == "Double Thin Border" else ""
 
                 print_code_above_qr_html = f"""
-                <div style="position: absolute; bottom: calc(4px + {dimensions['qr_size']}mm + 1.5mm); right: 4px; font-weight: bold; font-size: {max(8.0, 8.0 * (scale_factor * 0.72))}pt; text-align: center; color: {code_text_color}; z-index: 10;">
+                <div style="position: absolute; bottom: calc(4px + {dimensions['qr_size']}mm + 1.5mm); right: 4px; font-weight: bold; font-size: {calculated_labels_pt}pt; text-align: center; color: {code_text_color}; z-index: 10;">
                     SKU
                 </div>
                 """

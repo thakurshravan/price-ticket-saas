@@ -82,7 +82,8 @@ font_choice = st.sidebar.selectbox("Select Font Family", ["Arial", "Helvetica", 
 title_size = st.sidebar.slider("Product Name Font Size", 8, 24, 11)
 price_size = st.sidebar.slider("Price Font Size", 14, 42, 18)
 
-show_was_price = st.sidebar.checkbox("Show Strikethrough 'Was' Price Row", value=True)
+# Changed default to False because your new file does not contain a secondary price
+show_was_price = st.sidebar.checkbox("Show Strikethrough 'Was' Price Row", value=False)
 
 st.sidebar.subheader("🏢 Corporate Branding")
 uploaded_logo = st.sidebar.file_uploader("Upload Brand Logo (PNG/JPG)", type=["png", "jpg", "jpeg"])
@@ -153,13 +154,13 @@ if show_was_price:
     preview_price_table_html += f"""
         <tr>
             <td style="padding: 0 4px 0 0; margin: 0; vertical-align: middle; line-height: 1;">{get_custom_currency_svg("#888", size_px=was_icon_size)}</td>
-            <td style="padding: 0; margin: 0; vertical-align: middle; line-height: 1; font-size: {price_size - 4}px; color: #888; text-decoration: line-through;">90.85</td>
+            <td style="padding: 0; margin: 0; vertical-align: middle; line-height: 1; font-size: {price_size - 4}px; color: #888; text-decoration: line-through;">0.00</td>
         </tr>
     """
 preview_price_table_html += f"""
         <tr>
             <td style="padding: 0 4px 0 0; margin: 0; vertical-align: middle; line-height: 1;">{get_custom_currency_svg(active_text_color, size_px=main_icon_size)}</td>
-            <td style="padding: 0; margin: 0; vertical-align: middle; line-height: 1; font-size: {price_size + 4}px; font-weight: bold; color: {active_text_color};">79.00</td>
+            <td style="padding: 0; margin: 0; vertical-align: middle; line-height: 1; font-size: {price_size + 4}px; font-weight: bold; color: {active_text_color};">10.00</td>
         </tr>
     </tbody>
 </table>
@@ -176,7 +177,6 @@ if logo_b64:
 double_border_inset_open = f'<div style="position: absolute; top: 3px; bottom: 3px; left: 3px; right: 3px; border: 1px solid {primary_color}; box-sizing: border-box; pointer-events: none;">' if bg_style == "Double Thin Border" else ""
 double_border_inset_close = '</div>' if bg_style == "Double Thin Border" else ""
 
-# CRITICAL FIX: Escaped the internal layout curly braces by doubling them {{ }} so Python f-strings parse them accurately
 preview_html = f"""
 <div style="
     width: {dimensions['w'] * 4}px; 
@@ -196,11 +196,11 @@ preview_html = f"""
     
     <div style="background: {styles['header_bg']}; padding: 8px; padding-right: 35%; height: 35%; box-sizing: border-box;">
         <div style="color: {styles['header_text']}; font-size: {title_size + 4}px; font-weight: bold; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
-            Hyphen MagSafe AIRE Clear Case for iPhone 13, Clear
+            SQUARE GLASS 240ML WITH LID
         </div>
     </div>
     <div style="position: absolute; top: 41%; left: {'14px' if bg_style == 'Minimalist Left Ribbon' else '8px'}; color: {sku_text_color}; font-size: 11px;">
-        SKU: 1011480
+        SKU: 2201046187586
     </div>
     
     <div style="position: absolute; bottom: 10px; left: {'14px' if bg_style == 'Minimalist Left Ribbon' else '8px'};">
@@ -212,7 +212,6 @@ preview_html = f"""
 </div>
 """
 
-# CRITICAL FIX: Explicitly allowed unsafe HTML parsing to make components render visually instead of printing string characters
 st.markdown(preview_html, unsafe_allow_html=True)
 st.divider()
 
@@ -234,27 +233,32 @@ if uploaded_file is not None:
         file_bytes = uploaded_file.getvalue()
         if uploaded_file.name.endswith('.csv'):
             data_str = file_bytes.decode('utf-8', errors='ignore')
-            df = pd.read_csv(io.StringIO(data_str), header=None)
+            df = pd.read_csv(io.StringIO(data_str))
         else:
-            df = pd.read_excel(io.BytesIO(file_bytes), header=None)
+            df = pd.read_excel(io.BytesIO(file_bytes))
         
-        df = df.dropna(how='all').dropna(axis=1, how='all')
-        df.columns = df.iloc[0].astype(str).str.strip()
-        df = df[1:].reset_index(drop=True)
+        # Strip string white-spaces out of column names dynamically
+        df.columns = df.columns.astype(str).str.strip()
+        df = df.dropna(how='all')
         
         mapped_cols = {}
         for col in df.columns:
             col_lower = str(col).lower()
-            if "sku" in col_lower:
+            if "sku" in col_lower or "barcode" in col_lower:
                 mapped_cols["SKU"] = col
-            elif "product" in col_lower or "name" in col_lower or "title" in col_lower:
+            elif "product" in col_lower or "name" in col_lower or "title" in col_lower or "item" in col_lower:
                 mapped_cols["Product Name"] = col
-            elif "price" in col_lower or "rate" in col_lower or "mrp" in col_lower:
+            elif "price" in col_lower or "rate" in col_lower or "mrp" in col_lower or "retail" in col_lower:
                 mapped_cols["Price"] = col
             elif "url" in col_lower or "link" in col_lower or "website" in col_lower:
                 mapped_cols["URL"] = col
 
-        required_targets = ["SKU", "Product Name", "Price", "URL"]
+        # Optional URL fallback generation if column doesn't exist
+        if "URL" not in mapped_cols:
+            df["Generated_URL"] = "https://example.com"
+            mapped_cols["URL"] = "Generated_URL"
+
+        required_targets = ["SKU", "Product Name", "Price"]
         missing_targets = [t for t in required_targets if t not in mapped_cols]
         
         if missing_targets:
@@ -269,29 +273,17 @@ if uploaded_file is not None:
                 try:
                     price_val = float(row[mapped_cols["Price"]])
                     formatted_num = f"{price_val:.2f}"
-                    was_formatted_num = f"{price_val * 1.15:.2f}" 
                 except:
                     formatted_num = str(row[mapped_cols['Price']])
-                    was_formatted_num = ""
 
                 target_url = row[mapped_cols["URL"]]
                 qr_b64 = generate_qr_base64(target_url)
 
                 print_main_icon_size = max(16, int(price_size * 0.85))
-                print_was_icon_size = max(11, int((price_size - 4) * 0.85))
 
                 print_price_table_html = f"""
                 <table style="border-collapse: collapse; border: none; margin: 0; padding: 0;">
                     <tbody>
-                """
-                if show_was_price and was_formatted_num:
-                    print_price_table_html += f"""
-                        <tr>
-                            <td style="padding: 0 4px 0 0; margin: 0; vertical-align: middle; line-height: 1;">{get_custom_currency_svg("#888", size_px=print_was_icon_size)}</td>
-                            <td style="padding: 0; margin: 0; vertical-align: middle; line-height: 1; font-size: {price_size - 4}pt; color: #888; text-decoration: line-through;">{was_formatted_num}</td>
-                        </tr>
-                    """
-                print_price_table_html += f"""
                         <tr>
                             <td style="padding: 0 4px 0 0; margin: 0; vertical-align: middle; line-height: 1;">{get_custom_currency_svg(active_text_color, size_px=print_main_icon_size)}</td>
                             <td style="padding: 0; margin: 0; vertical-align: middle; line-height: 1; font-size: {price_size}pt; font-weight: bold; color: {active_text_color};">{formatted_num}</td>

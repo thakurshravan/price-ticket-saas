@@ -4,20 +4,16 @@ import qrcode
 import io
 import base64
 
-st.set_page_config(page_title="Custom Bulk Label Generator", layout="wide")
+st.set_page_config(page_title="Mini Tag Price Label Generator", layout="wide")
 
 if "file_uploader_key" not in st.session_state:
     st.session_state["file_uploader_key"] = 0
 
 # --- GLOBAL UTILITY LOGIC ---
-def hex_to_rgb(hex_str):
-    hex_str = hex_str.lstrip('#')
-    return tuple(int(hex_str[i:i+2], 16) for i in (0, 2, 4))
-
 def generate_qr_base64(url):
     if pd.isna(url) or not str(url).strip():
         url = "https://example.com"
-    qr = qrcode.QRCode(version=1, box_size=4, border=1)
+    qr = qrcode.QRCode(version=1, box_size=3, border=1)
     qr.add_data(str(url))
     qr.make(fit=True)
     img = qr.make_image(fill_color="black", back_color="white")
@@ -28,423 +24,222 @@ def generate_qr_base64(url):
 def process_logo_to_base64(uploaded_logo):
     if uploaded_logo is not None:
         try:
-            bytes_data = uploaded_logo.getvalue()
-            return base64.b64encode(bytes_data).decode()
+            return base64.b64encode(uploaded_logo.getvalue()).decode()
         except:
             return None
     return None
 
-# --- SIDEBAR: CONFIGURATION ---
-st.sidebar.header("🎨 Advanced Customization Engine")
+# --- SIDEBAR: COMPACT CONFIGURATION ENGINE ---
+st.sidebar.header("🎨 Mini Tag Layout Engine")
 
-SIZE_TEMPLATES = {
-    "60x40 mm (Standard Shelf Edge)": {"w": 60, "h": 40, "qr_size": 14},
-    "40x50 mm (Hang Tag)": {"w": 40, "h": 50, "qr_size": 12},
-    "80x50 mm (Large Display)": {"w": 80, "h": 50, "qr_size": 18},
-    "A4 Size Card (210x297 mm)": {"w": 210, "h": 297, "qr_size": 45},
-    "A5 Size Card (148x210 mm)": {"w": 148, "h": 210, "qr_size": 35},
-    "A6 Size Card (105x148 mm)": {"w": 105, "h": 148, "qr_size": 25},
-    "A7 Size Card (74x105 mm)": {"w": 74, "h": 105, "qr_size": 20},
-    "Custom Size...": None
+# Locked down exclusively to mini retail tags to protect alignment accuracy
+MINI_SIZE_TEMPLATES = {
+    "60x40 mm (Standard Retail Shelf Bzl)": {"w": 60, "h": 40, "qr_size": 13},
+    "40x50 mm (Vertical Product Hang Tag)": {"w": 40, "h": 50, "qr_size": 11},
+    "80x50 mm (Large Counter Slot Display)": {"w": 80, "h": 50, "qr_size": 16}
 }
 
-selected_size = st.sidebar.selectbox("1. Select Target Ticket Size", list(SIZE_TEMPLATES.keys()))
-
-if selected_size == "Custom Size...":
-    st.sidebar.markdown("📐 **Enter Manual Dimensions (in mm):**")
-    custom_w = st.sidebar.number_input("Ticket Width (mm)", min_value=10, max_value=250, value=60, step=1)
-    custom_h = st.sidebar.number_input("Ticket Height (mm)", min_value=10, max_value=250, value=40, step=1)
-    custom_qr = st.sidebar.number_input("QR Code Size (mm)", min_value=5, max_value=min(custom_w, custom_h)-5, value=14, step=1)
-    dimensions = {"w": custom_w, "h": custom_h, "qr_size": custom_qr}
-else:
-    dimensions = SIZE_TEMPLATES[selected_size]
+selected_size = st.sidebar.selectbox("1. Target Label Template", list(MINI_SIZE_TEMPLATES.keys()))
+dimensions = MINI_SIZE_TEMPLATES[selected_size]
 
 primary_color = st.sidebar.color_picker("Text & Accent Color", "#8a1515")
-
-bg_style = st.sidebar.selectbox("Ticket Background Style", [
-    "Solid Accent Header",
-    "Plain White", 
-    "Light Border Box", 
-    "Minimalist Left Ribbon", 
-    "Modern Gradient Top", 
-    "Double Thin Border",
-    "Soft Cream Vintage", 
-    "Dark Mode Luxury"
-])
-
-st.sidebar.subheader("Typography")
 font_choice = st.sidebar.selectbox("Select Font Family", ["Arial", "Helvetica", "Courier"])
-title_size = st.sidebar.slider("Product Name Font Size", 8, 24, 11)
-price_size = st.sidebar.slider("Price Font Size", 14, 42, 18)
-
+title_size = st.sidebar.slider("Product Name Font Size (pt)", 7, 16, 9)
+price_size = st.sidebar.slider("Price Font Size (pt)", 12, 28, 16)
 show_was_price = st.sidebar.checkbox("Show Strikethrough 'Was' Price Row", value=True)
 
-st.sidebar.subheader("🏢 Corporate Branding")
 uploaded_logo = st.sidebar.file_uploader("Upload Brand Logo (PNG/JPG)", type=["png", "jpg", "jpeg"])
 logo_b64 = process_logo_to_base64(uploaded_logo)
 
-# --- GLOBAL FONT CONFIGURATION ---
 web_font = "Courier New, monospace" if font_choice == "Courier" else f"{font_choice}, sans-serif"
 
-# --- CORE STYLE SOLVER LOGIC ---
-def compute_ticket_styles(style_name, primary_hex):
-    card_bg = "#ffffff"
-    card_border = "1px solid #e0e0e0" if style_name == "Plain White" else "1px dashed #ccc"
-    header_bg = "transparent"
-    header_text = primary_hex
-    left_ribbon_html = ""
-    
-    if style_name == "Solid Accent Header":
-        card_border = f"2px solid {primary_hex}"
-        header_bg = primary_hex
-        header_text = "#ffffff"
-    elif style_name == "Light Border Box":
-        card_border = f"2px solid {primary_hex}"
-    elif style_name == "Minimalist Left Ribbon":
-        card_border = "1px solid #e0e0e0"
-        left_ribbon_html = f'<div style="position: absolute; left: 0; top: 0; bottom: 0; width: 6px; background-color: {primary_hex};"></div>'
-    elif style_name == "Modern Gradient Top":
-        card_border = "1px solid #e0e0e0"
-        header_bg = f"linear-gradient(135deg, {primary_hex} 0%, #4f4f4f 100%)"
-        header_text = "#ffffff"
-    elif style_name == "Double Thin Border":
-        card_border = f"1px solid {primary_hex}"
-    elif style_name == "Soft Cream Vintage":
-        card_bg = "#fdfbf7"
-        card_border = "2px solid #dcd1bd"
-        header_text = primary_hex
-    elif style_name == "Dark Mode Luxury":
-        card_bg = "#121212"
-        card_border = "1px solid #2d2d2d"
-        header_bg = "#1a1a1a"
-        header_text = "#ffffff"
-
-    return {
-        "card_bg": card_bg, "card_border": card_border, "header_bg": header_bg, 
-        "header_text": header_text, "left_ribbon": left_ribbon_html
-    }
-
-styles = compute_ticket_styles(bg_style, primary_color)
-
-active_text_color = "#ffffff" if bg_style == "Dark Mode Luxury" else primary_color
-code_text_color = "#aaaaaa" if bg_style == "Dark Mode Luxury" else "#555555"
-preview_canvas_bg = styles["card_bg"]
-
-is_intl_card_size = "Size Card" in selected_size
-preview_left_label = "ITEM CODE: 010-02935-00" if is_intl_card_size else "010-02935-00"
-
-# --- MAIN INTERFACE LAYOUT ---
-st.title("🎟️ Custom Bulk Price Ticket Generator")
-st.write("Upload a product template file, customize layout properties, and trigger local hardware prints.")
+# --- MAIN INTERFACE DISPLAY ---
+st.title("🎟️ Retail Batch Mini Price Tag Generator")
+st.write("Layout system optimized strictly for high-accuracy standard millimeter thermal and shelf edge feeds.")
 
 # --- LIVE PREVIEW WINDOW ---
 st.subheader("👀 Live Ticket Sample Preview")
 
-preview_price_table_html = f"""
+preview_price_html = f"""
 <table style="border-collapse: collapse; border: none; margin: 0; padding: 0; font-family: {web_font}; text-align: left;">
     <tbody>
 """
 if show_was_price:
-    preview_price_table_html += f"""
+    preview_price_html += f"""
         <tr>
-            <td style="padding: 0 4px 0 0; margin: 0; vertical-align: middle; line-height: 1; font-size: {price_size - 6}px; color: #888; font-weight: bold;">AED</td>
-            <td style="padding: 0; margin: 0; vertical-align: middle; line-height: 1; font-size: {price_size - 4}px; color: #888; text-decoration: line-through;">90.85</td>
+            <td style="padding: 0 4px 0 0; font-size: {price_size - 5}px; color: #888; font-weight: bold; line-height: 1;">AED</td>
+            <td style="padding: 0; font-size: {price_size - 4}px; color: #888; text-decoration: line-through; line-height: 1;">1839.00</td>
         </tr>
     """
-preview_price_table_html += f"""
+preview_price_html += f"""
         <tr>
-            <td style="padding: 0 4px 0 0; margin: 0; vertical-align: middle; line-height: 1; font-size: {price_size - 2}px; color: {active_text_color}; font-weight: bold;">AED</td>
-            <td style="padding: 0; margin: 0; vertical-align: middle; line-height: 1; font-size: {price_size + 4}px; font-weight: bold; color: {active_text_color};">79.00</td>
+            <td style="padding: 0 4px 0 0; font-size: {price_size - 2}px; color: {primary_color}; font-weight: bold; line-height: 1;">AED</td>
+            <td style="padding: 0; font-size: {price_size + 2}px; font-weight: bold; color: {primary_color}; line-height: 1;">1799.00</td>
         </tr>
     </tbody>
 </table>
 """
 
-preview_logo_html = ""
-if logo_b64:
-    preview_logo_html = f"""
-    <div style="position: absolute; top: 4px; right: 8px; max-width: 25%; max-height: 20%; display: flex; justify-content: flex-end; align-items: center; z-index: 20;">
-        <img src="data:image/png;base64,{logo_b64}" style="max-width: 100%; max-height: 100%; object-fit: contain;" />
-    </div>
-    """
+preview_logo_html = f'<div style="position: absolute; top: 2px; right: 4px; max-width: 25%; max-height: 20%; display: flex; justify-content: flex-end; align-items: center; z-index: 20;"><img src="data:image/png;base64,{logo_b64}" style="max-width: 100%; max-height: 100%; object-fit: contain;" /></div>' if logo_b64 else ""
 
-double_border_inset_open = f'<div style="position: absolute; top: 3px; bottom: 3px; left: 3px; right: 3px; border: 1px solid {primary_color}; box-sizing: border-box; pointer-events: none;">' if bg_style == "Double Thin Border" else ""
-double_border_inset_close = '</div>' if bg_style == "Double Thin Border" else ""
-
-# Layout constructed using clean nested blocks
 preview_html = f"""
-<div style="
-    width: {dimensions['w'] * 4}px; 
-    height: {dimensions['h'] * 4}px; 
-    border: {styles['card_border']}; 
-    background: {preview_canvas_bg}; 
-    border-radius: 4px; 
-    position: relative; 
-    font-family: {web_font}; 
-    overflow: hidden;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.15);
-    margin-bottom: 20px;
-">
-    {double_border_inset_open}
-    {styles['left_ribbon']}
+<div style="width: {dimensions['w'] * 4}px; height: {dimensions['h'] * 4}px; border: 2px solid {primary_color}; background: #ffffff; border-radius: 4px; position: relative; font-family: {web_font}; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.15); margin-bottom: 20px;">
     {preview_logo_html}
-    
-    <div style="background: {styles['header_bg']}; padding: 4px 12px; display: flex; align-items: center; justify-content: center; text-align: center; height: 26%; box-sizing: border-box; overflow: hidden;">
-        <div style="color: {styles['header_text']}; font-size: {title_size + 4}px; line-height: 1.25; font-weight: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; width: 100%;">
+    <div style="background: {primary_color}; padding: 2px 8px; display: flex; align-items: center; justify-content: center; text-align: center; height: 26%; box-sizing: border-box; overflow: hidden;">
+        <div style="color: #ffffff; font-size: {title_size + 3}px; line-height: 1.2; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; width: 100%;">
             <strong style="text-transform: uppercase; font-weight: 900;">GARMIN</strong>: FENIX 7 PRO SAPPHIRE SOLAR
         </div>
     </div>
-    
-    <div style="height: 74%; padding: 8px; box-sizing: border-box; display: flex; justify-content: space-between; align-items: stretch; gap: 8px;">
-        
-        <div style="width: 60%; display: flex; flex-direction: column; justify-content: space-between; text-align: left;">
+    <div style="height: 74%; padding: 6px; box-sizing: border-box; display: flex; justify-content: space-between; align-items: stretch; gap: 4px;">
+        <div style="width: 62%; display: flex; flex-direction: column; justify-content: space-between; text-align: left; overflow: hidden;">
             <div>
-                <div style="color: {code_text_color}; font-size: 11px; font-weight: bold; margin-bottom: 4px; white-space: nowrap;">
-                    {preview_left_label}
-                </div>
-                <div style="color: #333333; font-size: 11px; line-height: 1.35; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical;">
-                    <strong style="text-transform: uppercase; font-weight: bold; display: block; margin-bottom: 2px;">PRODUCT HIGHLIGHTS:</strong>
-                    • 100% Genuine Material<br>• Premium Scratch Protection
+                <div style="color: #666; font-size: 10px; font-weight: bold; margin-bottom: 2px;">010-02935-00</div>
+                <div style="color: #333; font-size: 9px; line-height: 1.25; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;">
+                    <strong style="text-transform: uppercase; font-weight: bold; display: block; margin-bottom: 1px; font-size: 9.5px;">PRODUCT HIGHLIGHTS:</strong>
+                    • Unlimited battery life<br>• Detailed health features
                 </div>
             </div>
-            <div>
-                {preview_price_table_html}
-            </div>
+            <div>{preview_price_html}</div>
         </div>
-        
-        <div style="width: 35%; display: flex; flex-direction: column; align-items: center; justify-content: flex-end;">
-            <div style="font-weight: bold; font-size: 11px; text-align: center; color: {code_text_color}; margin-bottom: 4px; width: 100%; text-transform: uppercase;">SKU</div>
+        <div style="width: 35%; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; overflow: hidden;">
+            <div style="font-weight: bold; font-size: 10px; text-align: center; color: #666; margin-bottom: 2px; width: 100%; text-transform: uppercase;">SKU</div>
             <div style="width: {dimensions['qr_size'] * 4}px; height: {dimensions['qr_size'] * 4}px; background-image: url('data:image/png;base64,{generate_qr_base64("https://example.com")}'); background-size: cover; border: 1px solid #eee;"></div>
         </div>
-        
     </div>
-    {double_border_inset_close}
 </div>
 """
-
 st.markdown(preview_html, unsafe_allow_html=True)
 st.divider()
 
 # --- DATA IMPORT ENGINE ---
-def clear_file_callback():
-    st.session_state["file_uploader_key"] += 1
-
-uploaded_file = st.file_uploader(
-    "Upload Product File (.xlsx or .csv)", 
-    type=["xlsx", "csv"], 
-    key=f"file_uploader_{st.session_state['file_uploader_key']}"
-)
+uploaded_file = st.file_uploader("Upload Product File (.xlsx or .csv)", type=["xlsx", "csv"], key=f"file_uploader_{st.session_state['file_uploader_key']}")
 
 if uploaded_file is not None:
-    if st.button("🗑️ Clear File & Reset Canvas", on_click=clear_file_callback):
+    if st.button("🗑️ Clear File & Reset Canvas"):
+        st.session_state["file_uploader_key"] += 1
         st.rerun()
 
     try:
-        file_bytes = uploaded_file.getvalue()
         if uploaded_file.name.endswith('.csv'):
-            data_str = file_bytes.decode('utf-8-sig', errors='ignore')
-            df = pd.read_csv(io.StringIO(data_str))
+            df = pd.read_csv(io.StringIO(uploaded_file.getvalue().decode('utf-8-sig', errors='ignore')))
         else:
-            df = pd.read_excel(io.BytesIO(file_bytes))
+            df = pd.read_excel(io.BytesIO(uploaded_file.getvalue()))
         
         df.columns = df.columns.astype(str).str.strip().str.replace(r'\s+', ' ', regex=True)
         df = df.dropna(how='all')
         
-        mapped_cols = {}
+        # Explicit structure dictionary mapping rules
+        mapped = {}
         for col in df.columns:
-            col_lower = str(col).lower().strip()
-            
-            if "sku" in col_lower or "barcode" in col_lower or "item code" in col_lower:
-                mapped_cols["SKU"] = col
-            elif "product" in col_lower or "name" in col_lower or "title" in col_lower or "description" in col_lower:
-                mapped_cols["Product Name"] = col
-            elif col_lower == "now" or "price" in col_lower or "retail" in col_lower or "selling" in col_lower:
-                mapped_cols["Price"] = col
-            elif col_lower == "was" or "old" in col_lower or "strike" in col_lower:
-                mapped_cols["Was Price"] = col
-            elif "brand" in col_lower:
-                mapped_cols["Brand"] = col
-            elif "highlight" in col_lower or "feature" in col_lower:
-                mapped_cols["Highlights"] = col
-            elif "url" in col_lower or "link" in col_lower or "website" in col_lower:
-                mapped_cols["URL"] = col
+            c_low = col.lower().strip()
+            if "item code" in c_low: mapped["Item Code"] = col
+            elif "description" in c_low: mapped["Product Name"] = col
+            elif "highlight" in c_low: mapped["Highlights"] = col
+            elif "brand" in c_low: mapped["Brand"] = col
+            elif c_low == "now": mapped["Price"] = col
+            elif c_low == "was": mapped["Was Price"] = col
+            elif c_low == "sku": mapped["SKU"] = col
+            elif "url" in c_low or "link" in c_low: mapped["URL"] = col
 
-        if "URL" not in mapped_cols:
-            df["Generated_URL"] = "https://example.com"
-            mapped_cols["URL"] = "Generated_URL"
+        required = ["Item Code", "Product Name", "Price", "SKU"]
+        missing = [r for r in required if r not in mapped]
 
-        required_targets = ["SKU", "Product Name", "Price"]
-        missing_targets = [t for t in required_targets if t not in mapped_cols]
-        
-        if missing_targets:
-            st.error(f"Execution Halted. Missing columns: {missing_targets}")
-            st.write("Detected Columns in your file:", list(df.columns))
+        if missing:
+            st.error(f"Missing required spreadsheet columns: {missing}. Detected fields: {list(df.columns)}")
         else:
-            st.success("✨ Data payload mapped successfully!")
+            st.success("✨ Spreadsheet file structure verified successfully!")
             st.dataframe(df.head(3), use_container_width=True)
 
-            # --- GENERATION ENGINE ---
+            # --- GENERATION CONTAINER LOOP ---
             html_cards = ""
             for idx, row in df.iterrows():
                 try:
-                    price_val = float(row[mapped_cols["Price"]])
-                    formatted_num = f"{price_val:.2f}"
+                    p_val = float(row[mapped["Price"]])
+                    formatted_price = f"{p_val:.2f}"
                 except:
-                    formatted_num = str(row[mapped_cols['Price']])
+                    formatted_price = str(row[mapped["Price"]])
 
-                was_formatted_num = ""
-                if "Was Price" in mapped_cols and not pd.isna(row[mapped_cols["Was Price"]]):
-                    try:
-                        was_val = float(row[mapped_cols["Was Price"]])
-                        was_formatted_num = f"{was_val:.2f}"
-                    except:
-                        was_formatted_num = str(row[mapped_cols["Was Price"]])
+                try:
+                    w_val = float(row[mapped["Was Price"]]) if "Was Price" in mapped else 0
+                    formatted_was = f"{w_val:.2f}" if (w_val > 0 and not pd.isna(row[mapped["Was Price"]])) else ""
+                except:
+                    formatted_was = str(row[mapped["Was Price"]]) if "Was Price" in mapped else ""
 
-                brand_val = ""
-                if "Brand" in mapped_cols and not pd.isna(row[mapped_cols["Brand"]]):
-                    brand_val = str(row[mapped_cols["Brand"]]).strip()
-
-                highlights_val = ""
-                if "Highlights" in mapped_cols and not pd.isna(row[mapped_cols["Highlights"]]):
-                    highlights_val = str(row[mapped_cols["Highlights"]]).strip()
-                    highlights_val = highlights_val.replace('\n', '<br>')
-
-                item_code_val = str(row[mapped_cols["SKU"]]).strip()
-                target_url = row[mapped_cols["URL"]]
-                qr_b64 = generate_qr_base64(target_url)
-
-                scale_factor = max(1.0, dimensions['w'] / 60.0)
-                calculated_highlights_pt = max(7.5, 8.0 * (scale_factor * 0.72))
-                calculated_labels_pt = max(8.0, 8.0 * (scale_factor * 0.72))
+                brand = str(row[mapped["Brand"]]).strip() if "Brand" in mapped else ""
+                highlights = str(row[mapped["Highlights"]]).strip() if "Highlights" in mapped else ""
+                highlights = highlights.replace('\n', '<br>')
                 
-                print_price_table_html = f"""
+                sku = str(row[mapped["SKU"]]).strip()
+                item_code = str(row[mapped["Item Code"]]).strip()
+                qr_b64 = generate_qr_base64(row[mapped["URL"]] if "URL" in mapped else "https://example.com")
+
+                print_price_html = f"""
                 <table style="border-collapse: collapse; border: none; margin: 0; padding: 0; font-family: {web_font}; text-align: left;">
                     <tbody>
                 """
-                if show_was_price and was_formatted_num:
-                    print_price_table_html += f"""
+                if show_was_price and formatted_was:
+                    print_price_html += f"""
                         <tr>
-                            <td style="padding: 0 4px 0 0; margin: 0; vertical-align: middle; line-height: 1; font-size: {max(8.0, (price_size - 6) * scale_factor)}pt; color: #888; font-weight: bold;">AED</td>
-                            <td style="padding: 0; margin: 0; vertical-align: middle; line-height: 1; font-size: {price_size - 4}pt; color: #888; text-decoration: line-through;">{was_formatted_num}</td>
+                            <td style="padding: 0 4px 0 0; font-size: {title_size - 1}pt; color: #888; font-weight: bold; line-height: 1;">AED</td>
+                            <td style="padding: 0; font-size: {price_size - 4}pt; color: #888; text-decoration: line-through; line-height: 1;">{formatted_was}</td>
                         </tr>
                     """
-                print_price_table_html += f"""
+                print_price_html += f"""
                         <tr>
-                            <td style="padding: 0 4px 0 0; margin: 0; vertical-align: middle; line-height: 1; font-size: {max(10.0, (price_size - 2) * scale_factor)}pt; color: {active_text_color}; font-weight: bold;">AED</td>
-                            <td style="padding: 0; margin: 0; vertical-align: middle; line-height: 1; font-size: {price_size}pt; font-weight: bold; color: {active_text_color};">{formatted_num}</td>
+                            <td style="padding: 0 4px 0 0; font-size: {title_size + 1}pt; color: {primary_color}; font-weight: bold; line-height: 1;">AED</td>
+                            <td style="padding: 0; font-size: {price_size}pt; font-weight: bold; color: {primary_color}; line-height: 1;">{formatted_price}</td>
                         </tr>
                     </tbody>
                 </table>
                 """
 
-                card_logo_html = ""
-                if logo_b64:
-                    card_logo_html = f"""
-                    <div style="position: absolute; top: 1mm; right: 2mm; max-width: 25%; max-height: 20%; display: flex; justify-content: flex-end; align-items: center; z-index: 20;">
-                        <img src="data:image/png;base64,{logo_b64}" style="max-width: 100%; max-height: 100%; object-fit: contain;" />
-                    </div>
-                    """
+                print_highlights_html = f"""
+                <div style="color: #333; font-size: {title_size - 1.5}pt; line-height: 1.25; margin-top: 2px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;">
+                    <strong style="text-transform: uppercase; font-weight: bold; display: block; margin-bottom: 1px; font-size: {title_size - 1}pt;">PRODUCT HIGHLIGHTS:</strong>
+                    {highlights}
+                </div>
+                """ if highlights else ""
 
-                print_double_border_open = f'<div style="position: absolute; top: 0.8mm; bottom: 0.8mm; left: 0.8mm; right: 0.8mm; border: 0.25mm solid {primary_color}; box-sizing: border-box; pointer-events: none;">' if bg_style == "Double Thin Border" else ""
-                print_double_border_close = '</div>' if bg_style == "Double Thin Border" else ""
-
-                print_highlights_html = ""
-                if highlights_val:
-                    print_highlights_html = f"""
-                    <div style="color: #333333; font-size: {calculated_highlights_pt}pt; line-height: 1.35; margin-top: 2px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical;">
-                        <strong style="text-transform: uppercase; font-weight: bold; display: block; margin-bottom: 1.5px; font-size: {calculated_highlights_pt + 0.5}pt;">PRODUCT HIGHLIGHTS:</strong>
-                        {highlights_val}
-                    </div>
-                    """
-
-                title_header_content = f'{row[mapped_cols["Product Name"]]}'
-                if brand_val:
-                    title_header_content = f'<strong style="text-transform: uppercase; font-weight: 900;">{brand_val}</strong>: {title_header_content}'
-
-                left_side_code_label = f"ITEM CODE: {item_code_val}" if is_intl_card_size else item_code_val
+                header_text_content = f'<strong style="text-transform: uppercase; font-weight: 900;">{brand}</strong>: {row[mapped["Product Name"]]}' if brand else str(row[mapped["Product Name"]])
 
                 html_cards += f"""
-                <div class="ticket-card" style="
-                    width: {dimensions['w']}mm;
-                    height: {dimensions['h']}mm;
-                    border: {styles['card_border']};
-                    box-sizing: border-box;
-                    position: relative;
-                    background: {styles['card_bg']};
-                    font-family: {web_font};
-                    overflow: hidden;
-                    display: inline-block;
-                    margin: 1mm;
-                    vertical-align: top;
-                    text-align: left;
-                ">
-                    {print_double_border_open}
-                    {styles['left_ribbon']}
-                    {card_logo_html}
-                    
-                    <div style="background: {styles['header_bg']}; padding: 4px 6px; display: flex; align-items: center; justify-content: center; text-align: center; height: 26%; box-sizing: border-box; overflow: hidden;">
-                        <div style="color: {styles['header_text']}; font-size: {title_size}pt; line-height: 1.2; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; width: 100%;">
-                            {title_header_content}
-                        </div>
+                <div style="width: {dimensions['w']}mm; height: {dimensions['h']}mm; border: 1.5px solid {primary_color}; box-sizing: border-box; position: relative; background: #ffffff; font-family: {web_font}; overflow: hidden; display: inline-block; margin: 1mm; vertical-align: top; text-align: left;">
+                    <div style="background: {primary_color}; padding: 2px 6px; display: flex; align-items: center; justify-content: center; text-align: center; height: 26%; box-sizing: border-box; overflow: hidden;">
+                        <div style="color: #ffffff; font-size: {title_size}pt; line-height: 1.15; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; width: 100%;">{header_text_content}</div>
                     </div>
-                    
                     <div style="height: 74%; padding: 4px 6px; box-sizing: border-box; display: flex; justify-content: space-between; align-items: stretch; gap: 4px;">
-                        
-                        <div style="width: 60%; display: flex; flex-direction: column; justify-content: space-between; box-sizing: border-box;">
+                        <div style="width: 62%; display: flex; flex-direction: column; justify-content: space-between; box-sizing: border-box; overflow: hidden;">
                             <div>
-                                <div style="color: {code_text_color}; font-size: {calculated_labels_pt}pt; font-weight: bold; white-space: nowrap;">
-                                    {left_side_code_label}
-                                </div>
+                                <div style="color: #666; font-size: {title_size - 1}pt; font-weight: bold; white-space: nowrap; line-height: 1;">{item_code}</div>
                                 {print_highlights_html}
                             </div>
-                            <div>
-                                {print_price_table_html}
-                            </div>
+                            <div>{print_price_html}</div>
                         </div>
-                        
-                        <div style="width: 35%; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; box-sizing: border-box;">
-                            <div style="font-weight: bold; font-size: {calculated_labels_pt}pt; text-align: center; color: {code_text_color}; margin-bottom: 1.5mm; width: 100%; text-transform: uppercase;">SKU</div>
+                        <div style="width: 35%; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; box-sizing: border-box; overflow: hidden;">
+                            <div style="font-weight: bold; font-size: {title_size - 1}pt; text-align: center; color: #666; margin-bottom: 1mm; width: 100%; text-transform: uppercase; line-height: 1;">SKU</div>
                             <img src="data:image/png;base64,{qr_b64}" style="width: {dimensions['qr_size']}mm; height: {dimensions['qr_size']}mm; display: block;" />
                         </div>
-                        
                     </div>
-                    {print_double_border_close}
                 </div>
                 """
 
-            st.subheader("🖨️ Printable Document Feed")
+            st.subheader("🖨️ Printable Mini Document Feed")
             iframe_content = f"""
             <html>
             <head>
                 <style>
                     body {{ margin: 0; padding: 0; font-family: sans-serif; text-align: center; background: #fafafa; }}
-                    .print-btn {{
-                        background-color: {primary_color}; color: white; border: none; padding: 10px 24px;
-                        font-size: 14px; font-weight: bold; border-radius: 4px; cursor: pointer;
-                        box-shadow: 0 2px 5px rgba(0,0,0,0.15); margin: 20px auto; display: block;
-                        transition: opacity 0.2s ease; text-transform: uppercase; letter-spacing: 0.5px;
-                    }}
-                    .print-btn:hover {{ opacity: 0.9; }}
-                    .page-container {{
-                        width: 210mm; padding: 4mm; margin: 0 auto;
-                        background: white; box-sizing: border-box; text-align: left;
-                    }}
-                    @media print {{
-                        .print-btn {{ display: none !important; }}
-                        body {{ background: white; }}
-                        .page-container {{ padding: 0; margin: 0; width: 100%; }}
-                    }}
+                    .print-btn {{ background-color: {primary_color}; color: white; border: none; padding: 10px 24px; font-size: 14px; font-weight: bold; border-radius: 4px; cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.15); margin: 20px auto; display: block; text-transform: uppercase; }}
+                    .page-container {{ width: 210mm; padding: 4mm; margin: 0 auto; background: white; box-sizing: border-box; text-align: left; }}
+                    @media print {{ .print-btn {{ display: none !important; }} body {{ background: white; }} .page-container {{ padding: 0; margin: 0; width: 100%; }} }}
                 </style>
             </head>
             <body>
-                <button class="print-btn" onclick="window.print()">🖨️ Print Bulk Labels Sheet</button>
-                <div class="page-container">
-                    {html_cards}
-                </div>
+                <button class="print-btn" onclick="window.print()">🖨️ Print Bulk Mini Sheet</button>
+                <div class="page-container">{html_cards}</div>
             </body>
             </html>
             """
-            st.components.v1.html(iframe_content, height=800, scrolling=True)
-
+            st.components.v1.html(iframe_content, height=600, scrolling=True)
     except Exception as e:
-        st.error(f"Fatal Parser Error: {e}")
+        st.error(f"Data Parser Error: {e}")

@@ -141,19 +141,19 @@ st.write("Upload a product template file, customize layout properties, and trigg
 st.subheader("👀 Live Ticket Sample Preview")
 
 preview_price_table_html = f"""
-<table style="border-collapse: collapse; border: none; margin: 0; padding: 0; font-family: {web_font};">
+<table style="border-collapse: collapse; border: none; margin: 0; padding: 0; font-family: {web_font}; text-align: left;">
     <tbody>
 """
 if show_was_price:
     preview_price_table_html += f"""
         <tr>
-            <td style="padding: 0 6px 0 0; margin: 0; vertical-align: middle; line-height: 1; font-size: {price_size - 6}px; color: #888; font-weight: bold;">AED</td>
+            <td style="padding: 0 4px 0 0; margin: 0; vertical-align: middle; line-height: 1; font-size: {price_size - 6}px; color: #888; font-weight: bold;">AED</td>
             <td style="padding: 0; margin: 0; vertical-align: middle; line-height: 1; font-size: {price_size - 4}px; color: #888; text-decoration: line-through;">90.85</td>
         </tr>
     """
 preview_price_table_html += f"""
         <tr>
-            <td style="padding: 0 6px 0 0; margin: 0; vertical-align: middle; line-height: 1; font-size: {price_size - 2}px; color: {active_text_color}; font-weight: bold;">AED</td>
+            <td style="padding: 0 4px 0 0; margin: 0; vertical-align: middle; line-height: 1; font-size: {price_size - 2}px; color: {active_text_color}; font-weight: bold;">AED</td>
             <td style="padding: 0; margin: 0; vertical-align: middle; line-height: 1; font-size: {price_size + 4}px; font-weight: bold; color: {active_text_color};">79.00</td>
         </tr>
     </tbody>
@@ -171,19 +171,7 @@ if logo_b64:
 double_border_inset_open = f'<div style="position: absolute; top: 3px; bottom: 3px; left: 3px; right: 3px; border: 1px solid {primary_color}; box-sizing: border-box; pointer-events: none;">' if bg_style == "Double Thin Border" else ""
 double_border_inset_close = '</div>' if bg_style == "Double Thin Border" else ""
 
-preview_code_above_qr_html = f"""
-<div style="position: absolute; bottom: calc(10px + {dimensions['qr_size'] * 4}px + 6px); right: 8px; font-weight: bold; font-size: 11px; text-align: center; color: {code_text_color}; z-index: 10;">
-    SKU
-</div>
-"""
-
-preview_highlights_html = f"""
-<div style="color: #333333; font-size: 11px; line-height: 1.35; margin-top: 4px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical;">
-    <strong style="text-transform: uppercase; font-weight: bold; display: block; margin-bottom: 2px;">PRODUCT HIGHLIGHTS:</strong>
-    • 100% Genuine Material<br>• Premium Scratch Protection
-</div>
-"""
-
+# Layout constructed using clean nested blocks
 preview_html = f"""
 <div style="
     width: {dimensions['w'] * 4}px; 
@@ -207,21 +195,28 @@ preview_html = f"""
         </div>
     </div>
     
-    <div style="position: absolute; top: 28%; bottom: 8px; left: {'14px' if bg_style == 'Minimalist Left Ribbon' else '8px'}; width: 58%; display: flex; flex-direction: column; justify-content: space-between; box-sizing: border-box; text-align: left;">
-        <div>
-            <div style="color: {code_text_color}; font-size: 11px; font-weight: bold; white-space: nowrap;">
-                {preview_left_label}
+    <div style="height: 74%; padding: 8px; box-sizing: border-box; display: flex; justify-content: space-between; align-items: stretch; gap: 8px;">
+        
+        <div style="width: 60%; display: flex; flex-direction: column; justify-content: space-between; text-align: left;">
+            <div>
+                <div style="color: {code_text_color}; font-size: 11px; font-weight: bold; margin-bottom: 4px; white-space: nowrap;">
+                    {preview_left_label}
+                </div>
+                <div style="color: #333333; font-size: 11px; line-height: 1.35; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical;">
+                    <strong style="text-transform: uppercase; font-weight: bold; display: block; margin-bottom: 2px;">PRODUCT HIGHLIGHTS:</strong>
+                    • 100% Genuine Material<br>• Premium Scratch Protection
+                </div>
             </div>
-            {preview_highlights_html}
+            <div>
+                {preview_price_table_html}
+            </div>
         </div>
-        <div>
-            {preview_price_table_html}
+        
+        <div style="width: 35%; display: flex; flex-direction: column; align-items: center; justify-content: flex-end;">
+            <div style="font-weight: bold; font-size: 11px; text-align: center; color: {code_text_color}; margin-bottom: 4px; width: 100%; text-transform: uppercase;">SKU</div>
+            <div style="width: {dimensions['qr_size'] * 4}px; height: {dimensions['qr_size'] * 4}px; background-image: url('data:image/png;base64,{generate_qr_base64("https://example.com")}'); background-size: cover; border: 1px solid #eee;"></div>
         </div>
-    </div>
-    
-    <div style="position: absolute; bottom: 10px; right: 8px; width: {dimensions['qr_size'] * 4}px; display: flex; flex-direction: column; align-items: center; justify-content: flex-end;">
-        <div style="font-weight: bold; font-size: 11px; text-align: center; color: {code_text_color}; margin-bottom: 6px; width: 100%; text-transform: uppercase;">SKU</div>
-        <div style="width: {dimensions['qr_size'] * 4}px; height: {dimensions['qr_size'] * 4}px; background-image: url('data:image/png;base64,{generate_qr_base64("https://example.com")}'); background-size: cover; border: 1px solid #eee;"></div>
+        
     </div>
     {double_border_inset_close}
 </div>
@@ -312,6 +307,7 @@ if uploaded_file is not None:
                 highlights_val = ""
                 if "Highlights" in mapped_cols and not pd.isna(row[mapped_cols["Highlights"]]):
                     highlights_val = str(row[mapped_cols["Highlights"]]).strip()
+                    highlights_val = highlights_val.replace('\n', '<br>')
 
                 item_code_val = str(row[mapped_cols["SKU"]]).strip()
                 target_url = row[mapped_cols["URL"]]
@@ -322,7 +318,7 @@ if uploaded_file is not None:
                 calculated_labels_pt = max(8.0, 8.0 * (scale_factor * 0.72))
                 
                 print_price_table_html = f"""
-                <table style="border-collapse: collapse; border: none; margin: 0; padding: 0; font-family: {web_font};">
+                <table style="border-collapse: collapse; border: none; margin: 0; padding: 0; font-family: {web_font}; text-align: left;">
                     <tbody>
                 """
                 if show_was_price and was_formatted_num:
@@ -351,12 +347,6 @@ if uploaded_file is not None:
 
                 print_double_border_open = f'<div style="position: absolute; top: 0.8mm; bottom: 0.8mm; left: 0.8mm; right: 0.8mm; border: 0.25mm solid {primary_color}; box-sizing: border-box; pointer-events: none;">' if bg_style == "Double Thin Border" else ""
                 print_double_border_close = '</div>' if bg_style == "Double Thin Border" else ""
-
-                print_code_above_qr_html = f"""
-                <div style="position: absolute; bottom: calc(4px + {dimensions['qr_size']}mm + 1.5mm); right: 4px; font-weight: bold; font-size: {calculated_labels_pt}pt; text-align: center; color: {code_text_color}; z-index: 10;">
-                    SKU
-                </div>
-                """
 
                 print_highlights_html = ""
                 if highlights_val:
@@ -398,21 +388,25 @@ if uploaded_file is not None:
                         </div>
                     </div>
                     
-                    <div style="position: absolute; top: 31%; left: {'5mm' if bg_style == 'Minimalist Left Ribbon' else '6px'}; width: 58%; display: flex; flex-direction: column; justify-content: space-between; box-sizing: border-box;">
-                        <div>
-                            <div style="color: {code_text_color}; font-size: {calculated_labels_pt}pt; font-weight: bold; white-space: nowrap;">
-                                {left_side_code_label}
+                    <div style="height: 74%; padding: 4px 6px; box-sizing: border-box; display: flex; justify-content: space-between; align-items: stretch; gap: 4px;">
+                        
+                        <div style="width: 60%; display: flex; flex-direction: column; justify-content: space-between; box-sizing: border-box;">
+                            <div>
+                                <div style="color: {code_text_color}; font-size: {calculated_labels_pt}pt; font-weight: bold; white-space: nowrap;">
+                                    {left_side_code_label}
+                                </div>
+                                {print_highlights_html}
                             </div>
-                            {print_highlights_html}
+                            <div>
+                                {print_price_table_html}
+                            </div>
                         </div>
-                        <div>
-                            {print_price_table_html}
+                        
+                        <div style="width: 35%; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; box-sizing: border-box;">
+                            <div style="font-weight: bold; font-size: {calculated_labels_pt}pt; text-align: center; color: {code_text_color}; margin-bottom: 1.5mm; width: 100%; text-transform: uppercase;">SKU</div>
+                            <img src="data:image/png;base64,{qr_b64}" style="width: {dimensions['qr_size']}mm; height: {dimensions['qr_size']}mm; display: block;" />
                         </div>
-                    </div>
-                    
-                    <div style="position: absolute; bottom: 4px; right: 4px; width: {dimensions['qr_size']}mm; display: flex; flex-direction: column; align-items: center; justify-content: flex-end;">
-                        <div style="font-weight: bold; font-size: {calculated_labels_pt}pt; text-align: center; color: {code_text_color}; margin-bottom: 2mm; width: 100%; text-transform: uppercase;">SKU</div>
-                        <img src="data:image/png;base64,{qr_b64}" style="width: {dimensions['qr_size']}mm; height: {dimensions['qr_size']}mm; display: block;" />
+                        
                     </div>
                     {print_double_border_close}
                 </div>

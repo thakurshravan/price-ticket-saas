@@ -46,6 +46,15 @@ def get_custom_currency_svg(color_hex, size_px=24):
 # --- SIDEBAR: CONFIGURATION ---
 st.sidebar.header("🎨 Advanced Customization Engine")
 
+PAPER_SIZES = {
+    "A4 Page Sheet (210x297 mm)": "210mm",
+    "A5 Page Sheet (148x210 mm)": "148mm",
+    "A6 Page Sheet (105x148 mm)": "105mm",
+    "A7 Page Sheet (74x105 mm)": "74mm"
+}
+selected_paper = st.sidebar.selectbox("1. Target Print Paper Size", list(PAPER_SIZES.keys()))
+paper_width_css = PAPER_SIZES[selected_paper]
+
 SIZE_TEMPLATES = {
     "60x40 mm (Standard Shelf Edge)": {"w": 60, "h": 40, "qr_size": 14},
     "40x50 mm (Hang Tag)": {"w": 40, "h": 50, "qr_size": 12},
@@ -53,7 +62,7 @@ SIZE_TEMPLATES = {
     "Custom Size...": None
 }
 
-selected_size = st.sidebar.selectbox("1. Select Target Ticket Size", list(SIZE_TEMPLATES.keys()))
+selected_size = st.sidebar.selectbox("2. Select Target Ticket Size", list(SIZE_TEMPLATES.keys()))
 
 if selected_size == "Custom Size...":
     st.sidebar.markdown("📐 **Enter Manual Dimensions (in mm):**")
@@ -168,7 +177,7 @@ preview_price_table_html += f"""
 preview_logo_html = ""
 if logo_b64:
     preview_logo_html = f"""
-    <div style="position: absolute; top: 6px; right: 8px; max-width: 30%; max-height: 35%; display: flex; justify-content: flex-end; align-items: center; z-index: 20;">
+    <div style="position: absolute; top: 4px; right: 8px; max-width: 30%; max-height: 24%; display: flex; justify-content: flex-end; align-items: center; z-index: 20;">
         <img src="data:image/png;base64,{logo_b64}" style="max-width: 100%; max-height: 100%; object-fit: contain;" />
     </div>
     """
@@ -179,6 +188,13 @@ double_border_inset_close = '</div>' if bg_style == "Double Thin Border" else ""
 preview_code_above_qr_html = f"""
 <div style="position: absolute; bottom: calc(10px + {dimensions['qr_size'] * 4}px + 6px); right: 8px; font-weight: bold; font-size: 11px; text-align: center; color: {code_text_color}; z-index: 10;">
     1011480
+</div>
+"""
+
+# Sample product highlight preview element placeholder right below ITEM CODE label
+preview_highlights_html = f"""
+<div style="position: absolute; top: 44%; left: {'14px' if bg_style == 'Minimalist Left Ribbon' else '8px'}; color: #777777; font-size: 10px; max-width: 55%; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.2;">
+    • 100% Genuine Material<br>• Premium Scratch Protection
 </div>
 """
 
@@ -199,14 +215,16 @@ preview_html = f"""
     {styles['left_ribbon']}
     {preview_logo_html}
     
-    <div style="background: {styles['header_bg']}; padding: 8px; padding-right: 35%; height: 35%; box-sizing: border-box;">
+    <div style="background: {styles['header_bg']}; padding: 6px 8px; padding-right: 35%; height: 26%; box-sizing: border-box; overflow: hidden;">
         <div style="color: {styles['header_text']}; font-size: {title_size + 4}px; line-height: 1.2; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
             <strong style="text-transform: uppercase;">HYPHEN</strong>: MagSafe AIRE Clear Case for iPhone 13, Clear
         </div>
     </div>
-    <div style="position: absolute; top: 41%; left: {'14px' if bg_style == 'Minimalist Left Ribbon' else '8px'}; color: {code_text_color}; font-size: 11px; font-weight: bold;">
+    <div style="position: absolute; top: 32%; left: {'14px' if bg_style == 'Minimalist Left Ribbon' else '8px'}; color: {code_text_color}; font-size: 11px; font-weight: bold;">
         ITEM CODE: 1011480
     </div>
+    
+    {preview_highlights_html}
     
     <div style="position: absolute; bottom: 10px; left: {'14px' if bg_style == 'Minimalist Left Ribbon' else '8px'};">
         {preview_price_table_html}
@@ -260,6 +278,8 @@ if uploaded_file is not None:
                 mapped_cols["Was Price"] = col
             elif "brand" in col_lower:
                 mapped_cols["Brand"] = col
+            elif "highlight" in col_lower or "feature" in col_lower:
+                mapped_cols["Highlights"] = col
             elif "url" in col_lower or "link" in col_lower or "website" in col_lower:
                 mapped_cols["URL"] = col
 
@@ -298,6 +318,11 @@ if uploaded_file is not None:
                 if "Brand" in mapped_cols and not pd.isna(row[mapped_cols["Brand"]]):
                     brand_val = str(row[mapped_cols["Brand"]]).strip()
 
+                # Dynamic display handling for Product Highlights
+                highlights_val = ""
+                if "Highlights" in mapped_cols and not pd.isna(row[mapped_cols["Highlights"]]):
+                    highlights_val = str(row[mapped_cols["Highlights"]]).strip()
+
                 item_code_val = str(row[mapped_cols["SKU"]]).strip()
                 target_url = row[mapped_cols["URL"]]
                 qr_b64 = generate_qr_base64(target_url)
@@ -328,7 +353,7 @@ if uploaded_file is not None:
                 card_logo_html = ""
                 if logo_b64:
                     card_logo_html = f"""
-                    <div style="position: absolute; top: 1.5mm; right: 2mm; max-width: 30%; max-height: 35%; display: flex; justify-content: flex-end; align-items: center; z-index: 20;">
+                    <div style="position: absolute; top: 1mm; right: 2mm; max-width: 30%; max-height: 24%; display: flex; justify-content: flex-end; align-items: center; z-index: 20;">
                         <img src="data:image/png;base64,{logo_b64}" style="max-width: 100%; max-height: 100%; object-fit: contain;" />
                     </div>
                     """
@@ -341,6 +366,15 @@ if uploaded_file is not None:
                     {item_code_val}
                 </div>
                 """
+
+                # Injecting the Product Highlights section HTML directly below ITEM CODE layout text
+                print_highlights_html = ""
+                if highlights_val:
+                    print_highlights_html = f"""
+                    <div style="position: absolute; top: 43%; left: {'5mm' if bg_style == 'Minimalist Left Ribbon' else '6px'}; color: #666666; font-size: 7.5pt; max-width: 58%; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.25;">
+                        {highlights_val}
+                    </div>
+                    """
 
                 title_header_content = f'{row[mapped_cols["Product Name"]]}'
                 if brand_val:
@@ -365,14 +399,16 @@ if uploaded_file is not None:
                     {styles['left_ribbon']}
                     {card_logo_html}
                     
-                    <div style="background: {styles['header_bg']}; padding: 6px; padding-right: 35%; height: 35%; box-sizing: border-box;">
+                    <div style="background: {styles['header_bg']}; padding: 4px 6px; padding-right: 35%; height: 26%; box-sizing: border-box; overflow: hidden;">
                         <div style="color: {styles['header_text']}; font-size: {title_size}pt; line-height: 1.1; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
                             {title_header_content}
                         </div>
                     </div>
-                    <div style="position: absolute; top: 42%; left: {'5mm' if bg_style == 'Minimalist Left Ribbon' else '6px'}; color: {code_text_color}; font-size: 8pt; font-weight: bold;">
+                    <div style="position: absolute; top: 32%; left: {'5mm' if bg_style == 'Minimalist Left Ribbon' else '6px'}; color: {code_text_color}; font-size: 8pt; font-weight: bold;">
                         ITEM CODE: {item_code_val}
                     </div>
+                    
+                    {print_highlights_html}
                     
                     <div style="position: absolute; bottom: 6px; left: {'5mm' if bg_style == 'Minimalist Left Ribbon' else '6px'};">
                         {print_price_table_html}
@@ -397,25 +433,26 @@ if uploaded_file is not None:
                 <style>
                     body {{ margin: 0; padding: 0; font-family: sans-serif; text-align: center; background: #fafafa; }}
                     .print-btn {{
-                        background-color: #25d366; color: white; border: none; padding: 12px 30px;
-                        font-size: 16px; font-weight: bold; border-radius: 6px; cursor: pointer;
-                        box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin: 15px auto; display: block;
+                        background-color: {primary_color}; color: white; border: none; padding: 10px 24px;
+                        font-size: 14px; font-weight: bold; border-radius: 4px; cursor: pointer;
+                        box-shadow: 0 2px 5px rgba(0,0,0,0.15); margin: 20px auto; display: block;
+                        transition: opacity 0.2s ease; text-transform: uppercase; letter-spacing: 0.5px;
                     }}
-                    .print-btn:hover {{ background-color: #1ebe57; }}
-                    .a4-page {{
-                        width: 210mm; padding: 5mm; margin: 0 auto;
+                    .print-btn:hover {{ opacity: 0.9; }}
+                    .page-container {{
+                        width: {paper_width_css}; padding: 4mm; margin: 0 auto;
                         background: white; box-sizing: border-box; text-align: left;
                     }}
                     @media print {{
                         .print-btn {{ display: none !important; }}
                         body {{ background: white; }}
-                        .a4-page {{ padding: 0; margin: 0; width: 100%; }}
+                        .page-container {{ padding: 0; margin: 0; width: 100%; }}
                     }}
                 </style>
             </head>
             <body>
-                <button class="print-btn" onclick="window.print()">🖨️ CLICK HERE TO PRINT BULK SHEET</button>
-                <div class="a4-page">
+                <button class="print-btn" onclick="window.print()">🖨️ Print Bulk Labels Sheet</button>
+                <div class="page-container">
                     {html_cards}
                 </div>
             </body>

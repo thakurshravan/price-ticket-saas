@@ -82,7 +82,6 @@ font_choice = st.sidebar.selectbox("Select Font Family", ["Arial", "Helvetica", 
 title_size = st.sidebar.slider("Product Name Font Size", 8, 24, 11)
 price_size = st.sidebar.slider("Price Font Size", 14, 42, 18)
 
-# Changed default to False because your new file does not contain a secondary price
 show_was_price = st.sidebar.checkbox("Show Strikethrough 'Was' Price Row", value=False)
 
 st.sidebar.subheader("🏢 Corporate Branding")
@@ -232,23 +231,23 @@ if uploaded_file is not None:
     try:
         file_bytes = uploaded_file.getvalue()
         if uploaded_file.name.endswith('.csv'):
-            data_str = file_bytes.decode('utf-8', errors='ignore')
+            data_str = file_bytes.decode('utf-8-sig', errors='ignore')
             df = pd.read_csv(io.StringIO(data_str))
         else:
             df = pd.read_excel(io.BytesIO(file_bytes))
         
-        # Strip string white-spaces out of column names dynamically
-        df.columns = df.columns.astype(str).str.strip()
+        # Clean column spaces and formatting variations safely
+        df.columns = df.columns.astype(str).str.strip().str.replace(r'\s+', ' ', regex=True)
         df = df.dropna(how='all')
         
         mapped_cols = {}
         for col in df.columns:
-            col_lower = str(col).lower()
-            if "sku" in col_lower or "barcode" in col_lower:
+            col_lower = str(col).lower().strip()
+            if "sku" in col_lower or "barcode" in col_lower or "code" in col_lower:
                 mapped_cols["SKU"] = col
             elif "product" in col_lower or "name" in col_lower or "title" in col_lower or "item" in col_lower:
                 mapped_cols["Product Name"] = col
-            elif "price" in col_lower or "rate" in col_lower or "mrp" in col_lower or "retail" in col_lower:
+            elif "price" in col_lower or "rate" in col_lower or "mrp" in col_lower or "retail" in col_lower or "selling" in col_lower:
                 mapped_cols["Price"] = col
             elif "url" in col_lower or "link" in col_lower or "website" in col_lower:
                 mapped_cols["URL"] = col
@@ -263,6 +262,7 @@ if uploaded_file is not None:
         
         if missing_targets:
             st.error(f"Execution Halted. Missing columns: {missing_targets}")
+            st.write("Detected Columns in your file:", list(df.columns))
         else:
             st.success("✨ Data payload mapped successfully!")
             st.dataframe(df.head(3), use_container_width=True)

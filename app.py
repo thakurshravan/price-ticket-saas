@@ -46,23 +46,18 @@ def get_custom_currency_svg(color_hex, size_px=24):
 # --- SIDEBAR: CONFIGURATION ---
 st.sidebar.header("🎨 Advanced Customization Engine")
 
-PAPER_SIZES = {
-    "A4 Page Sheet (210x297 mm)": "210mm",
-    "A5 Page Sheet (148x210 mm)": "148mm",
-    "A6 Page Sheet (105x148 mm)": "105mm",
-    "A7 Page Sheet (74x105 mm)": "74mm"
-}
-selected_paper = st.sidebar.selectbox("1. Target Print Paper Size", list(PAPER_SIZES.keys()))
-paper_width_css = PAPER_SIZES[selected_paper]
-
 SIZE_TEMPLATES = {
     "60x40 mm (Standard Shelf Edge)": {"w": 60, "h": 40, "qr_size": 14},
     "40x50 mm (Hang Tag)": {"w": 40, "h": 50, "qr_size": 12},
     "80x50 mm (Large Display)": {"w": 80, "h": 50, "qr_size": 18},
+    "A4 Size Card (210x297 mm)": {"w": 210, "h": 297, "qr_size": 45},
+    "A5 Size Card (148x210 mm)": {"w": 148, "h": 210, "qr_size": 35},
+    "A6 Size Card (105x148 mm)": {"w": 105, "h": 148, "qr_size": 25},
+    "A7 Size Card (74x105 mm)": {"w": 74, "h": 105, "qr_size": 20},
     "Custom Size...": None
 }
 
-selected_size = st.sidebar.selectbox("2. Select Target Ticket Size", list(SIZE_TEMPLATES.keys()))
+selected_size = st.sidebar.selectbox("1. Select Target Ticket Size", list(SIZE_TEMPLATES.keys()))
 
 if selected_size == "Custom Size...":
     st.sidebar.markdown("📐 **Enter Manual Dimensions (in mm):**")
@@ -103,7 +98,7 @@ web_font = "Courier New, monospace" if font_choice == "Courier" else f"{font_cho
 # --- CORE STYLE SOLVER LOGIC ---
 def compute_ticket_styles(style_name, primary_hex):
     card_bg = "#ffffff"
-    card_border = "1px dashed #ccc"
+    card_border = "1px solid #e0e0e0" if style_name == "Plain White" else "1px dashed #ccc"
     header_bg = "transparent"
     header_text = primary_hex
     left_ribbon_html = ""
@@ -191,9 +186,9 @@ preview_code_above_qr_html = f"""
 </div>
 """
 
-# Sample product highlight preview element placeholder right below ITEM CODE label
+# Preview scales dynamically based on bounding box constraints
 preview_highlights_html = f"""
-<div style="position: absolute; top: 44%; left: {'14px' if bg_style == 'Minimalist Left Ribbon' else '8px'}; color: #777777; font-size: 10px; max-width: 55%; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.2;">
+<div style="position: absolute; top: 44%; left: {'14px' if bg_style == 'Minimalist Left Ribbon' else '8px'}; color: #777777; font-size: 10px; max-width: 55%; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.3;">
     • 100% Genuine Material<br>• Premium Scratch Protection
 </div>
 """
@@ -318,7 +313,6 @@ if uploaded_file is not None:
                 if "Brand" in mapped_cols and not pd.isna(row[mapped_cols["Brand"]]):
                     brand_val = str(row[mapped_cols["Brand"]]).strip()
 
-                # Dynamic display handling for Product Highlights
                 highlights_val = ""
                 if "Highlights" in mapped_cols and not pd.isna(row[mapped_cols["Highlights"]]):
                     highlights_val = str(row[mapped_cols["Highlights"]]).strip()
@@ -329,6 +323,15 @@ if uploaded_file is not None:
 
                 print_main_icon_size = max(16, int(price_size * 0.85))
                 print_was_icon_size = max(11, int((price_size - 4) * 0.85))
+
+                # --- ADVANCED DYNAMIC RESPONSIVE TYPOGRAPHY INTEL ---
+                # Scales font sizes linearly when working with massive cards (A4, A5, A6 layouts)
+                scale_factor = max(1.0, dimensions['w'] / 60.0)
+                calculated_highlights_pt = max(7.5, 7.5 * (scale_factor * 0.75))
+                
+                # Dynamic top boundary position rules to stop collisions
+                top_offset_pct = 32
+                highlights_top_pct = 43
 
                 print_price_table_html = f"""
                 <table style="border-collapse: collapse; border: none; margin: 0; padding: 0;">
@@ -362,16 +365,15 @@ if uploaded_file is not None:
                 print_double_border_close = '</div>' if bg_style == "Double Thin Border" else ""
 
                 print_code_above_qr_html = f"""
-                <div style="position: absolute; bottom: calc(4px + {dimensions['qr_size']}mm + 1.5mm); right: 4px; font-weight: bold; font-size: 8pt; text-align: center; color: {code_text_color}; z-index: 10;">
+                <div style="position: absolute; bottom: calc(4px + {dimensions['qr_size']}mm + 1.5mm); right: 4px; font-weight: bold; font-size: {max(8.0, 8.0 * (scale_factor * 0.75))}pt; text-align: center; color: {code_text_color}; z-index: 10;">
                     {item_code_val}
                 </div>
                 """
 
-                # Injecting the Product Highlights section HTML directly below ITEM CODE layout text
                 print_highlights_html = ""
                 if highlights_val:
                     print_highlights_html = f"""
-                    <div style="position: absolute; top: 43%; left: {'5mm' if bg_style == 'Minimalist Left Ribbon' else '6px'}; color: #666666; font-size: 7.5pt; max-width: 58%; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.25;">
+                    <div style="position: absolute; top: {highlights_top_pct}%; left: {'5mm' if bg_style == 'Minimalist Left Ribbon' else '6px'}; color: #666666; font-size: {calculated_highlights_pt}pt; max-width: 58%; display: -webkit-box; -webkit-line-clamp: 5; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.35;">
                         {highlights_val}
                     </div>
                     """
@@ -404,7 +406,7 @@ if uploaded_file is not None:
                             {title_header_content}
                         </div>
                     </div>
-                    <div style="position: absolute; top: 32%; left: {'5mm' if bg_style == 'Minimalist Left Ribbon' else '6px'}; color: {code_text_color}; font-size: 8pt; font-weight: bold;">
+                    <div style="position: absolute; top: {top_offset_pct}%; left: {'5mm' if bg_style == 'Minimalist Left Ribbon' else '6px'}; color: {code_text_color}; font-size: {max(8.0, 8.0 * (scale_factor * 0.75))}pt; font-weight: bold;">
                         ITEM CODE: {item_code_val}
                     </div>
                     
@@ -440,7 +442,7 @@ if uploaded_file is not None:
                     }}
                     .print-btn:hover {{ opacity: 0.9; }}
                     .page-container {{
-                        width: {paper_width_css}; padding: 4mm; margin: 0 auto;
+                        width: 210mm; padding: 4mm; margin: 0 auto;
                         background: white; box-sizing: border-box; text-align: left;
                     }}
                     @media print {{

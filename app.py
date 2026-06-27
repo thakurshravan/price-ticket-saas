@@ -139,9 +139,8 @@ active_text_color = "#ffffff" if bg_style == "Dark Mode Luxury" else primary_col
 code_text_color = "#aaaaaa" if bg_style == "Dark Mode Luxury" else "#555555"
 preview_canvas_bg = styles["card_bg"]
 
-# Determine if standard labels show up based on template properties
 is_intl_card_size = "Size Card" in selected_size
-preview_left_label = "ITEM CODE: 1011480" if is_intl_card_size else "1011480"
+preview_left_label = "ITEM CODE: 010-02935-00" if is_intl_card_size else "010-02935-00"
 
 # --- MAIN INTERFACE LAYOUT ---
 st.title("🎟️ Custom Bulk Price Ticket Generator")
@@ -184,7 +183,6 @@ if logo_b64:
 double_border_inset_open = f'<div style="position: absolute; top: 3px; bottom: 3px; left: 3px; right: 3px; border: 1px solid {primary_color}; box-sizing: border-box; pointer-events: none;">' if bg_style == "Double Thin Border" else ""
 double_border_inset_close = '</div>' if bg_style == "Double Thin Border" else ""
 
-# Layout text above QR code modified to "SKU"
 preview_code_above_qr_html = f"""
 <div style="position: absolute; bottom: calc(10px + {dimensions['qr_size'] * 4}px + 6px); right: 8px; font-weight: bold; font-size: 11px; text-align: center; color: {code_text_color}; z-index: 10;">
     SKU
@@ -192,7 +190,8 @@ preview_code_above_qr_html = f"""
 """
 
 preview_highlights_html = f"""
-<div style="position: absolute; bottom: 65px; left: {'14px' if bg_style == 'Minimalist Left Ribbon' else '8px'}; color: #444444; font-size: 11px; max-width: 58%; max-height: 35%; overflow: hidden; line-height: 1.3; font-weight: 500;">
+<div style="position: absolute; bottom: 65px; left: {'14px' if bg_style == 'Minimalist Left Ribbon' else '8px'}; color: #333333; font-size: 11px; max-width: 58%; max-height: 35%; overflow: hidden; line-height: 1.35;">
+    <strong style="text-transform: uppercase; font-weight: bold; display: block; margin-bottom: 2px;">PRODUCT HIGHLIGHTS:</strong>
     • 100% Genuine Material<br>• Premium Scratch Protection
 </div>
 """
@@ -216,7 +215,7 @@ preview_html = f"""
     
     <div style="background: {styles['header_bg']}; padding: 4px 12px; display: flex; align-items: center; justify-content: center; text-align: center; height: 26%; box-sizing: border-box; overflow: hidden;">
         <div style="color: {styles['header_text']}; font-size: {title_size + 4}px; line-height: 1.25; font-weight: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; width: 100%;">
-            <strong style="text-transform: uppercase; font-weight: 900;">HYPHEN</strong>: MagSafe AIRE Clear Case for iPhone 13, Clear
+            <strong style="text-transform: uppercase; font-weight: 900;">GARMIN</strong>: FENIX 7 PRO SAPPHIRE SOLAR
         </div>
     </div>
     <div style="position: absolute; top: 31%; left: {'14px' if bg_style == 'Minimalist Left Ribbon' else '8px'}; color: {code_text_color}; font-size: 11px; font-weight: bold;">
@@ -362,7 +361,6 @@ if uploaded_file is not None:
                 print_double_border_open = f'<div style="position: absolute; top: 0.8mm; bottom: 0.8mm; left: 0.8mm; right: 0.8mm; border: 0.25mm solid {primary_color}; box-sizing: border-box; pointer-events: none;">' if bg_style == "Double Thin Border" else ""
                 print_double_border_close = '</div>' if bg_style == "Double Thin Border" else ""
 
-                # Text identifier above QR code set to "SKU"
                 print_code_above_qr_html = f"""
                 <div style="position: absolute; bottom: calc(4px + {dimensions['qr_size']}mm + 1.5mm); right: 4px; font-weight: bold; font-size: {max(8.0, 8.0 * (scale_factor * 0.72))}pt; text-align: center; color: {code_text_color}; z-index: 10;">
                     SKU
@@ -372,7 +370,8 @@ if uploaded_file is not None:
                 print_highlights_html = ""
                 if highlights_val:
                     print_highlights_html = f"""
-                    <div style="position: absolute; bottom: calc(8px + {max(16, int(price_size * 1.2))}pt); left: {'5mm' if bg_style == 'Minimalist Left Ribbon' else '6px'}; color: #333333; font-size: {calculated_highlights_pt}pt; max-width: 58%; max-height: 38%; overflow: hidden; line-height: 1.35; font-weight: 500;">
+                    <div style="position: absolute; bottom: calc(8px + {max(16, int(price_size * 1.2))}pt); left: {'5mm' if bg_style == 'Minimalist Left Ribbon' else '6px'}; color: #333333; font-size: {calculated_highlights_pt}pt; max-width: 58%; max-height: 38%; overflow: hidden; line-height: 1.35;">
+                        <strong style="text-transform: uppercase; font-weight: bold; display: block; margin-bottom: 1.5px; font-size: {calculated_highlights_pt + 0.5}pt;">PRODUCT HIGHLIGHTS:</strong>
                         {highlights_val}
                     </div>
                     """
@@ -381,7 +380,6 @@ if uploaded_file is not None:
                 if brand_val:
                     title_header_content = f'<strong style="text-transform: uppercase; font-weight: 900;">{brand_val}</strong>: {title_header_content}'
 
-                # Remove string label prefix if not international layout size card
                 left_side_code_label = f"ITEM CODE: {item_code_val}" if is_intl_card_size else item_code_val
 
                 html_cards += f"""

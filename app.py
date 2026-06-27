@@ -82,7 +82,8 @@ font_choice = st.sidebar.selectbox("Select Font Family", ["Arial", "Helvetica", 
 title_size = st.sidebar.slider("Product Name Font Size", 8, 24, 11)
 price_size = st.sidebar.slider("Price Font Size", 14, 42, 18)
 
-show_was_price = st.sidebar.checkbox("Show Strikethrough 'Was' Price Row", value=False)
+# Turned this to True by default since your file contains a "WAS" column
+show_was_price = st.sidebar.checkbox("Show Strikethrough 'Was' Price Row", value=True)
 
 st.sidebar.subheader("🏢 Corporate Branding")
 uploaded_logo = st.sidebar.file_uploader("Upload Brand Logo (PNG/JPG)", type=["png", "jpg", "jpeg"])
@@ -153,13 +154,13 @@ if show_was_price:
     preview_price_table_html += f"""
         <tr>
             <td style="padding: 0 4px 0 0; margin: 0; vertical-align: middle; line-height: 1;">{get_custom_currency_svg("#888", size_px=was_icon_size)}</td>
-            <td style="padding: 0; margin: 0; vertical-align: middle; line-height: 1; font-size: {price_size - 4}px; color: #888; text-decoration: line-through;">0.00</td>
+            <td style="padding: 0; margin: 0; vertical-align: middle; line-height: 1; font-size: {price_size - 4}px; color: #888; text-decoration: line-through;">90.85</td>
         </tr>
     """
 preview_price_table_html += f"""
         <tr>
             <td style="padding: 0 4px 0 0; margin: 0; vertical-align: middle; line-height: 1;">{get_custom_currency_svg(active_text_color, size_px=main_icon_size)}</td>
-            <td style="padding: 0; margin: 0; vertical-align: middle; line-height: 1; font-size: {price_size + 4}px; font-weight: bold; color: {active_text_color};">10.00</td>
+            <td style="padding: 0; margin: 0; vertical-align: middle; line-height: 1; font-size: {price_size + 4}px; font-weight: bold; color: {active_text_color};">79.00</td>
         </tr>
     </tbody>
 </table>
@@ -195,11 +196,11 @@ preview_html = f"""
     
     <div style="background: {styles['header_bg']}; padding: 8px; padding-right: 35%; height: 35%; box-sizing: border-box;">
         <div style="color: {styles['header_text']}; font-size: {title_size + 4}px; font-weight: bold; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
-            SQUARE GLASS 240ML WITH LID
+            Hyphen MagSafe AIRE Clear Case for iPhone 13, Clear
         </div>
     </div>
     <div style="position: absolute; top: 41%; left: {'14px' if bg_style == 'Minimalist Left Ribbon' else '8px'}; color: {sku_text_color}; font-size: 11px;">
-        SKU: 2201046187586
+        SKU: 1011480
     </div>
     
     <div style="position: absolute; bottom: 10px; left: {'14px' if bg_style == 'Minimalist Left Ribbon' else '8px'};">
@@ -236,23 +237,31 @@ if uploaded_file is not None:
         else:
             df = pd.read_excel(io.BytesIO(file_bytes))
         
-        # Clean column spaces and formatting variations safely
+        # Strip out encoding characters and hidden whitespace variations safely
         df.columns = df.columns.astype(str).str.strip().str.replace(r'\s+', ' ', regex=True)
         df = df.dropna(how='all')
         
         mapped_cols = {}
         for col in df.columns:
             col_lower = str(col).lower().strip()
-            if "sku" in col_lower or "barcode" in col_lower or "code" in col_lower:
+            
+            # Match SKU / Barcode / Item Code
+            if "sku" in col_lower or "barcode" in col_lower or "item code" in col_lower:
                 mapped_cols["SKU"] = col
-            elif "product" in col_lower or "name" in col_lower or "title" in col_lower or "item" in col_lower:
+            # Match Product Name / Description
+            elif "product" in col_lower or "name" in col_lower or "title" in col_lower or "description" in col_lower:
                 mapped_cols["Product Name"] = col
-            elif "price" in col_lower or "rate" in col_lower or "mrp" in col_lower or "retail" in col_lower or "selling" in col_lower:
+            # Match Selling Price / Now Price
+            elif col_lower == "now" or "price" in col_lower or "retail" in col_lower or "selling" in col_lower:
                 mapped_cols["Price"] = col
+            # Match Was Price / Old Price
+            elif col_lower == "was" or "old" in col_lower or "strike" in col_lower:
+                mapped_cols["Was Price"] = col
+            # Match URL
             elif "url" in col_lower or "link" in col_lower or "website" in col_lower:
                 mapped_cols["URL"] = col
 
-        # Optional URL fallback generation if column doesn't exist
+        # Fallback placeholder string if URL is completely missing
         if "URL" not in mapped_cols:
             df["Generated_URL"] = "https://example.com"
             mapped_cols["URL"] = "Generated_URL"
@@ -270,20 +279,40 @@ if uploaded_file is not None:
             # --- GENERATION ENGINE ---
             html_cards = ""
             for idx, row in df.iterrows():
+                # Format current price
                 try:
                     price_val = float(row[mapped_cols["Price"]])
                     formatted_num = f"{price_val:.2f}"
                 except:
                     formatted_num = str(row[mapped_cols['Price']])
 
+                # Format optional was price
+                was_formatted_num = ""
+                if "Was Price" in mapped_cols and not pd.isna(row[mapped_cols["Was Price"]]):
+                    try:
+                        was_val = float(row[mapped_cols["Was Price"]])
+                        was_formatted_num = f"{was_val:.2f}"
+                    except:
+                        was_formatted_num = str(row[mapped_cols['Was Price']])
+
                 target_url = row[mapped_cols["URL"]]
                 qr_b64 = generate_qr_base64(target_url)
 
                 print_main_icon_size = max(16, int(price_size * 0.85))
+                print_was_icon_size = max(11, int((price_size - 4) * 0.85))
 
                 print_price_table_html = f"""
                 <table style="border-collapse: collapse; border: none; margin: 0; padding: 0;">
                     <tbody>
+                """
+                if show_was_price and was_formatted_num:
+                    print_price_table_html += f"""
+                        <tr>
+                            <td style="padding: 0 4px 0 0; margin: 0; vertical-align: middle; line-height: 1;">{get_custom_currency_svg("#888", size_px=print_was_icon_size)}</td>
+                            <td style="padding: 0; margin: 0; vertical-align: middle; line-height: 1; font-size: {price_size - 4}pt; color: #888; text-decoration: line-through;">{was_formatted_num}</td>
+                        </tr>
+                    """
+                print_price_table_html += f"""
                         <tr>
                             <td style="padding: 0 4px 0 0; margin: 0; vertical-align: middle; line-height: 1;">{get_custom_currency_svg(active_text_color, size_px=print_main_icon_size)}</td>
                             <td style="padding: 0; margin: 0; vertical-align: middle; line-height: 1; font-size: {price_size}pt; font-weight: bold; color: {active_text_color};">{formatted_num}</td>

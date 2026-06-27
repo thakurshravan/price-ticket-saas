@@ -29,10 +29,10 @@ def process_logo_to_base64(uploaded_logo):
             return None
     return None
 
-# --- SIDEBAR: COMPACT CONFIGURATION ENGINE ---
+# --- SIDEBAR: CONFIGURATION ENGINE ---
 st.sidebar.header("🎨 Mini Tag Layout Engine")
 
-# Locked down exclusively to mini retail tags to protect alignment accuracy
+# Predefined mini retail tags to protect alignment accuracy
 MINI_SIZE_TEMPLATES = {
     "60x40 mm (Standard Retail Shelf Bzl)": {"w": 60, "h": 40, "qr_size": 13},
     "40x50 mm (Vertical Product Hang Tag)": {"w": 40, "h": 50, "qr_size": 11},
@@ -68,13 +68,13 @@ if show_was_price:
     preview_price_html += f"""
         <tr>
             <td style="padding: 0 4px 0 0; font-size: {price_size - 5}px; color: #888; font-weight: bold; line-height: 1;">AED</td>
-            <td style="padding: 0; font-size: {price_size - 4}px; color: #888; text-decoration: line-through; line-height: 1;">1839.00</td>
+            <td style="padding: 0; margin: 0; font-size: {price_size - 4}px; color: #888; text-decoration: line-through; line-height: 1;">1839.00</td>
         </tr>
     """
 preview_price_html += f"""
         <tr>
             <td style="padding: 0 4px 0 0; font-size: {price_size - 2}px; color: {primary_color}; font-weight: bold; line-height: 1;">AED</td>
-            <td style="padding: 0; font-size: {price_size + 2}px; font-weight: bold; color: {primary_color}; line-height: 1;">1799.00</td>
+            <td style="padding: 0; margin: 0; font-size: {price_size + 2}px; font-weight: bold; color: {primary_color}; line-height: 1;">1799.00</td>
         </tr>
     </tbody>
 </table>
@@ -157,13 +157,15 @@ if uploaded_file is not None:
                     p_val = float(row[mapped["Price"]])
                     formatted_price = f"{p_val:.2f}"
                 except:
-                    formatted_price = str(row[mapped["Price"]])
+                    formatted_num = str(row[mapped['Price']])
 
-                try:
-                    w_val = float(row[mapped["Was Price"]]) if "Was Price" in mapped else 0
-                    formatted_was = f"{w_val:.2f}" if (w_val > 0 and not pd.isna(row[mapped["Was Price"]])) else ""
-                except:
-                    formatted_was = str(row[mapped["Was Price"]]) if "Was Price" in mapped else ""
+                was_formatted_num = ""
+                if "Was Price" in mapped and not pd.isna(row[mapped["Was Price"]]):
+                    try:
+                        was_val = float(row[mapped["Was Price"]])
+                        was_formatted_num = f"{was_val:.2f}"
+                    except:
+                        was_formatted_num = str(row[mapped["Was Price"]])
 
                 brand = str(row[mapped["Brand"]]).strip() if "Brand" in mapped else ""
                 highlights = str(row[mapped["Highlights"]]).strip() if "Highlights" in mapped else ""
@@ -177,11 +179,11 @@ if uploaded_file is not None:
                 <table style="border-collapse: collapse; border: none; margin: 0; padding: 0; font-family: {web_font}; text-align: left;">
                     <tbody>
                 """
-                if show_was_price and formatted_was:
+                if show_was_price and was_formatted_num:
                     print_price_html += f"""
                         <tr>
                             <td style="padding: 0 4px 0 0; font-size: {title_size - 1}pt; color: #888; font-weight: bold; line-height: 1;">AED</td>
-                            <td style="padding: 0; font-size: {price_size - 4}pt; color: #888; text-decoration: line-through; line-height: 1;">{formatted_was}</td>
+                            <td style="padding: 0; font-size: {price_size - 4}pt; color: #888; text-decoration: line-through; line-height: 1;">{was_formatted_num}</td>
                         </tr>
                     """
                 print_price_html += f"""

@@ -44,7 +44,7 @@ dimensions = MINI_SIZE_TEMPLATES[selected_size]
 primary_color = st.sidebar.color_picker("Text & Accent Color", "#8a1515")
 font_choice = st.sidebar.selectbox("Select Font Family", ["Arial", "Helvetica", "Courier"])
 title_size = st.sidebar.slider("Product Name Font Size (pt)", 7, 16, 9)
-price_size = st.sidebar.slider("Price Font Size (pt)", 12, 28, 16)
+price_size = st.sidebar.slider("Price Font Size (pt)", 14, 42, 18)
 show_was_price = st.sidebar.checkbox("Show Strikethrough 'Was' Price Row", value=True)
 
 uploaded_logo = st.sidebar.file_uploader("Upload Brand Logo (PNG/JPG)", type=["png", "jpg", "jpeg"])
@@ -66,7 +66,7 @@ preview_price_html = f"""
 if show_was_price:
     preview_price_html += f"""
         <tr>
-            <td style="padding: 0 4px 0 0; font-size: {price_size - 5}px; color: #888; font-weight: bold; line-height: 1;">AED</td>
+            <td style="padding: 0 4px 0 0; font-size: {price_size - 6}px; color: #888; font-weight: bold; line-height: 1;">AED</td>
             <td style="padding: 0; font-size: {price_size - 4}px; color: #888; text-decoration: line-through; line-height: 1;">1839.00</td>
         </tr>
     """
@@ -92,24 +92,21 @@ preview_html = f"""
     </div>
     
     <div style="height: 74%; padding: 6px; box-sizing: border-box; display: flex; justify-content: space-between; align-items: stretch; gap: 4px;">
-        
         <div style="width: 62%; display: flex; flex-direction: column; justify-content: space-between; text-align: left; overflow: hidden;">
             <div>
                 <div style="color: #444; font-size: 10.5px; font-weight: bold; margin-bottom: 3px; letter-spacing: 0.3px;">010-02935-00</div>
-                
                 <div style="color: #333; font-size: 9px; line-height: 1.35; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;">
                     <strong style="text-transform: uppercase; font-weight: bold; display: block; margin-bottom: 2px; font-size: 9.5px;">PRODUCT HIGHLIGHTS:</strong>
                     • Unlimited battery life<br>• Detailed health features
                 </div>
             </div>
-            <div>{preview_price_table_html if 'preview_price_table_html' in locals() else preview_price_html}</div>
+            <div>{preview_price_html}</div>
         </div>
         
         <div style="width: 35%; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; overflow: hidden;">
             <div style="font-weight: bold; font-size: 10.5px; text-align: center; color: #444; margin-bottom: 3px; width: 100%; text-transform: uppercase; letter-spacing: 0.3px;">SKU</div>
             <div style="width: {dimensions['qr_size'] * 4}px; height: {dimensions['qr_size'] * 4}px; background-image: url('data:image/png;base64,{generate_qr_base64("https://example.com")}'); background-size: cover; border: 1px solid #eee;"></div>
         </div>
-        
     </div>
 </div>
 """
@@ -191,13 +188,13 @@ if uploaded_file is not None:
                     print_price_html += f"""
                         <tr>
                             <td style="padding: 0 4px 0 0; font-size: {max(8.0, (price_size - 6) * scale_factor)}pt; color: #888; font-weight: bold; line-height: 1;">AED</td>
-                            <td style="padding: 0; margin: 0; font-size: {price_size - 4}pt; color: #888; text-decoration: line-through; line-height: 1;">{was_formatted_num}</td>
+                            <td style="padding: 0; font-size: {price_size - 4}pt; color: #888; text-decoration: line-through; line-height: 1;">{was_formatted_num}</td>
                         </tr>
                     """
                 print_price_html += f"""
                         <tr>
                             <td style="padding: 0 4px 0 0; font-size: {max(10.0, (price_size - 2) * scale_factor)}pt; color: {primary_color}; font-weight: bold; line-height: 1;">AED</td>
-                            <td style="padding: 0; margin: 0; font-size: {price_size}pt; font-weight: bold; color: {primary_color}; line-height: 1;">{formatted_price}</td>
+                            <td style="padding: 0; font-size: {price_size}pt; font-weight: bold; color: {primary_color}; line-height: 1;">{formatted_price}</td>
                         </tr>
                     </tbody>
                 </table>
@@ -210,43 +207,48 @@ if uploaded_file is not None:
                 </div>
                 """ if highlights else ""
 
-                # Layout logic for bold Brand followed by regular weight Description
                 header_text_content = f'<strong style="text-transform: uppercase; font-weight: 900;">{brand}</strong>: <span style="font-weight: normal;">{row[mapped["Product Name"]]}</span>' if brand else f'<span style="font-weight: normal;">{row[mapped["Product Name"]]}</span>'
-                left_label = item_code
 
                 html_cards += f"""
-                <div style="width: {dimensions['w']}mm; height: {dimensions['h']}mm; border: 1.5px solid {primary_color}; box-sizing: border-box; position: relative; background: #ffffff; font-family: {web_font}; overflow: hidden; display: inline-block; margin: 1mm; vertical-align: top; text-align: left;">
+                <div class="ticket-card" style="width: {dimensions['w']}mm; height: {dimensions['h']}mm; border: 1.5px solid {primary_color}; box-sizing: border-box; position: relative; background: #ffffff; font-family: {web_font}; overflow: hidden; display: inline-block; margin: 1.5mm; vertical-align: top; text-align: left; page-break-inside: avoid; break-inside: avoid;">
                     <div style="background: {primary_color}; padding: 4px 6px; display: flex; align-items: center; justify-content: center; text-align: center; height: 26%; box-sizing: border-box; overflow: hidden;">
                         <div style="color: #ffffff; font-size: {title_size}pt; line-height: 1.25; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; width: 100%;">{header_text_content}</div>
                     </div>
                     <div style="height: 74%; padding: 4px 6px; box-sizing: border-box; display: flex; justify-content: space-between; align-items: stretch; gap: 4px;">
-                        
                         <div style="width: 62%; display: flex; flex-direction: column; justify-content: space-between; box-sizing: border-box; overflow: hidden;">
                             <div>
-                                <div style="color: #444; font-size: {calculated_labels_pt}pt; font-weight: bold; white-space: nowrap; line-height: 1; margin-bottom: 2px;">{left_label}</div>
+                                <div style="color: #444; font-size: {calculated_labels_pt}pt; font-weight: bold; white-space: nowrap; line-height: 1; margin-bottom: 2px;">{item_code}</div>
                                 {print_highlights_html}
                             </div>
                             <div>{print_price_html}</div>
                         </div>
-                        
                         <div style="width: 35%; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; box-sizing: border-box; overflow: hidden;">
                             <div style="font-weight: bold; font-size: {calculated_labels_pt}pt; text-align: center; color: #444; margin-bottom: 1.5mm; width: 100%; text-transform: uppercase; line-height: 1;">SKU</div>
                             <img src="data:image/png;base64,{qr_b64}" style="width: {dimensions['qr_size']}mm; height: {dimensions['qr_size']}mm; display: block;" />
                         </div>
-                        
                     </div>
                 </div>
                 """
 
             st.subheader("🖨️ Printable Mini Document Feed")
+            
+            # Integrated strict CSS @media print style system parameters inside iframe payload header
             iframe_content = f"""
             <html>
             <head>
                 <style>
                     body {{ margin: 0; padding: 0; font-family: sans-serif; text-align: center; background: #fafafa; }}
-                    .print-btn {{ background-color: {primary_color}; color: white; border: none; padding: 10px 24px; font-size: 14px; font-weight: bold; border-radius: 4px; cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.15); margin: 20px auto; display: block; text-transform: uppercase; }}
-                    .page-container {{ width: 210mm; padding: 4mm; margin: 0 auto; background: white; box-sizing: border-box; text-align: left; }}
-                    @media print {{ .print-btn {{ display: none !important; }} body {{ background: white; }} .page-container {{ padding: 0; margin: 0; width: 100%; }} }}
+                    .print-btn {{ background-color: {primary_color}; color: white; border: none; padding: 12px 30px; font-size: 14px; font-weight: bold; border-radius: 4px; cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.15); margin: 20px auto; display: block; text-transform: uppercase; letter-spacing: 0.5px; }}
+                    .print-btn:hover {{ opacity: 0.9; }}
+                    .page-container {{ width: 210mm; padding: 5mm; margin: 0 auto; background: white; box-sizing: border-box; text-align: left; display: flex; flex-wrap: wrap; align-content: flex-start; }}
+                    
+                    @media print {{
+                        @page {{ margin: 0mm; size: A4 portrait; }}
+                        body {{ background: white; margin: 0; padding: 0; }}
+                        .print-btn {{ display: none !important; }}
+                        .page-container {{ width: 210mm; padding: 6mm 4mm; margin: 0 auto; background: transparent; border: none; box-shadow: none; display: flex !important; flex-wrap: wrap !important; }}
+                        .ticket-card {{ -webkit-print-color-adjust: exact; print-color-adjust: exact; color-adjust: exact; }}
+                    }}
                 </style>
             </head>
             <body>
@@ -255,6 +257,6 @@ if uploaded_file is not None:
             </body>
             </html>
             """
-            st.components.v1.html(iframe_content, height=600, scrolling=True)
+            st.components.v1.html(iframe_content, height=750, scrolling=True)
     except Exception as e:
         st.error(f"Data Parser Error: {e}")

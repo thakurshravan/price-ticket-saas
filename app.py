@@ -413,7 +413,7 @@ if uploaded_file is not None:
                         </div>
                     </div>
                     
-                    <div style="position: absolute; top: 28%; bottom: 6px; left: {'5mm' if bg_style == 'Minimalist Left Ribbon' else '6px'}; width: 58%; display: flex; flex-direction: column; justify-content: space-between; box-sizing: border-box;">
+                    <div style="position: absolute; top: 31%; left: {'5mm' if bg_style == 'Minimalist Left Ribbon' else '6px'}; width: 58%; display: flex; flex-direction: column; justify-content: space-between; box-sizing: border-box;">
                         <div>
                             <div style="color: {code_text_color}; font-size: {calculated_labels_pt}pt; font-weight: bold; white-space: nowrap;">
                                 {left_side_code_label}

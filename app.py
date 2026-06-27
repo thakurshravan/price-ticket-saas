@@ -183,19 +183,7 @@ if logo_b64:
 double_border_inset_open = f'<div style="position: absolute; top: 3px; bottom: 3px; left: 3px; right: 3px; border: 1px solid {primary_color}; box-sizing: border-box; pointer-events: none;">' if bg_style == "Double Thin Border" else ""
 double_border_inset_close = '</div>' if bg_style == "Double Thin Border" else ""
 
-preview_code_above_qr_html = f"""
-<div style="position: absolute; bottom: calc(10px + {dimensions['qr_size'] * 4}px + 6px); right: 8px; font-weight: bold; font-size: 11px; text-align: center; color: {code_text_color}; z-index: 10;">
-    SKU
-</div>
-"""
-
-preview_highlights_html = f"""
-<div style="position: absolute; bottom: 65px; left: {'14px' if bg_style == 'Minimalist Left Ribbon' else '8px'}; color: #333333; font-size: 11px; max-width: 58%; max-height: 35%; overflow: hidden; line-height: 1.35;">
-    <strong style="text-transform: uppercase; font-weight: bold; display: block; margin-bottom: 2px;">PRODUCT HIGHLIGHTS:</strong>
-    • 100% Genuine Material<br>• Premium Scratch Protection
-</div>
-"""
-
+# Layout elements updated to stack automatically
 preview_html = f"""
 <div style="
     width: {dimensions['w'] * 4}px; 
@@ -218,18 +206,26 @@ preview_html = f"""
             <strong style="text-transform: uppercase; font-weight: 900;">GARMIN</strong>: FENIX 7 PRO SAPPHIRE SOLAR
         </div>
     </div>
-    <div style="position: absolute; top: 31%; left: {'14px' if bg_style == 'Minimalist Left Ribbon' else '8px'}; color: {code_text_color}; font-size: 11px; font-weight: bold;">
-        {preview_left_label}
+    
+    <div style="position: absolute; top: 28%; bottom: 8px; left: {'14px' if bg_style == 'Minimalist Left Ribbon' else '8px'}; width: 58%; display: flex; flex-direction: column; justify-content: space-between; box-sizing: border-box; text-align: left;">
+        <div>
+            <div style="color: {code_text_color}; font-size: 11px; font-weight: bold; margin-bottom: 4px; white-space: nowrap;">
+                {preview_left_label}
+            </div>
+            <div style="color: #333333; font-size: 11px; line-height: 1.35; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical;">
+                <strong style="text-transform: uppercase; font-weight: bold; display: block; margin-bottom: 2px;">PRODUCT HIGHLIGHTS:</strong>
+                • 100% Genuine Material<br>• Premium Scratch Protection
+            </div>
+        </div>
+        <div>
+            {preview_price_table_html}
+        </div>
     </div>
     
-    {preview_highlights_html}
-    
-    <div style="position: absolute; bottom: 10px; left: {'14px' if bg_style == 'Minimalist Left Ribbon' else '8px'};">
-        {preview_price_table_html}
+    <div style="position: absolute; bottom: 10px; right: 8px; width: {dimensions['qr_size'] * 4}px; display: flex; flex-direction: column; align-items: center; justify-content: flex-end;">
+        <div style="font-weight: bold; font-size: 11px; text-align: center; color: {code_text_color}; margin-bottom: 6px; width: 100%; text-transform: uppercase;">SKU</div>
+        <div style="width: {dimensions['qr_size'] * 4}px; height: {dimensions['qr_size'] * 4}px; background-image: url('data:image/png;base64,{generate_qr_base64("https://example.com")}'); background-size: cover; border: 1px solid #eee;"></div>
     </div>
-    
-    {preview_code_above_qr_html}
-    <div style="position: absolute; bottom: 10px; right: 8px; width: {dimensions['qr_size'] * 4}px; height: {dimensions['qr_size'] * 4}px; background-image: url('data:image/png;base64,{generate_qr_base64("https://example.com")}'); background-size: cover; border: 1px solid #eee;"></div>
     {double_border_inset_close}
 </div>
 """
@@ -329,6 +325,7 @@ if uploaded_file is not None:
 
                 scale_factor = max(1.0, dimensions['w'] / 60.0)
                 calculated_highlights_pt = max(7.5, 8.0 * (scale_factor * 0.72))
+                calculated_labels_pt = max(8.0, 8.0 * (scale_factor * 0.72))
                 
                 print_price_table_html = f"""
                 <table style="border-collapse: collapse; border: none; margin: 0; padding: 0;">
@@ -361,16 +358,10 @@ if uploaded_file is not None:
                 print_double_border_open = f'<div style="position: absolute; top: 0.8mm; bottom: 0.8mm; left: 0.8mm; right: 0.8mm; border: 0.25mm solid {primary_color}; box-sizing: border-box; pointer-events: none;">' if bg_style == "Double Thin Border" else ""
                 print_double_border_close = '</div>' if bg_style == "Double Thin Border" else ""
 
-                print_code_above_qr_html = f"""
-                <div style="position: absolute; bottom: calc(4px + {dimensions['qr_size']}mm + 1.5mm); right: 4px; font-weight: bold; font-size: {max(8.0, 8.0 * (scale_factor * 0.72))}pt; text-align: center; color: {code_text_color}; z-index: 10;">
-                    SKU
-                </div>
-                """
-
                 print_highlights_html = ""
                 if highlights_val:
                     print_highlights_html = f"""
-                    <div style="position: absolute; bottom: calc(8px + {max(16, int(price_size * 1.2))}pt); left: {'5mm' if bg_style == 'Minimalist Left Ribbon' else '6px'}; color: #333333; font-size: {calculated_highlights_pt}pt; max-width: 58%; max-height: 38%; overflow: hidden; line-height: 1.35;">
+                    <div style="color: #333333; font-size: {calculated_highlights_pt}pt; line-height: 1.35; margin-top: 2px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical;">
                         <strong style="text-transform: uppercase; font-weight: bold; display: block; margin-bottom: 1.5px; font-size: {calculated_highlights_pt + 0.5}pt;">PRODUCT HIGHLIGHTS:</strong>
                         {highlights_val}
                     </div>
@@ -382,6 +373,7 @@ if uploaded_file is not None:
 
                 left_side_code_label = f"ITEM CODE: {item_code_val}" if is_intl_card_size else item_code_val
 
+                # Entire layout converted into a reliable left/right structure
                 html_cards += f"""
                 <div class="ticket-card" style="
                     width: {dimensions['w']}mm;
@@ -406,24 +398,23 @@ if uploaded_file is not None:
                             {title_header_content}
                         </div>
                     </div>
-                    <div style="position: absolute; top: 31%; left: {'5mm' if bg_style == 'Minimalist Left Ribbon' else '6px'}; color: {code_text_color}; font-size: {max(8.0, 8.0 * (scale_factor * 0.72))}pt; font-weight: bold;">
-                        {left_side_code_label}
+                    
+                    <div style="position: absolute; top: 28%; bottom: 6px; left: {'5mm' if bg_style == 'Minimalist Left Ribbon' else '6px'}; width: 58%; display: flex; flex-direction: column; justify-content: space-between; box-sizing: border-box;">
+                        <div>
+                            <div style="color: {code_text_color}; font-size: {calculated_labels_pt}pt; font-weight: bold; white-space: nowrap;">
+                                {left_side_code_label}
+                            </div>
+                            {print_highlights_html}
+                        </div>
+                        <div>
+                            {print_price_table_html}
+                        </div>
                     </div>
                     
-                    {print_highlights_html}
-                    
-                    <div style="position: absolute; bottom: 6px; left: {'5mm' if bg_style == 'Minimalist Left Ribbon' else '6px'};">
-                        {print_price_table_html}
+                    <div style="position: absolute; bottom: 4px; right: 4px; width: {dimensions['qr_size']}mm; display: flex; flex-direction: column; align-items: center; justify-content: flex-end;">
+                        <div style="font-weight: bold; font-size: {calculated_labels_pt}pt; text-align: center; color: {code_text_color}; margin-bottom: 2mm; width: 100%; text-transform: uppercase;">SKU</div>
+                        <img src="data:image/png;base64,{qr_b64}" style="width: {dimensions['qr_size']}mm; height: {dimensions['qr_size']}mm; display: block;" />
                     </div>
-                    
-                    {print_code_above_qr_html}
-                    <img src="data:image/png;base64,{qr_b64}" style="
-                        position: absolute;
-                        bottom: 4px;
-                        right: 4px;
-                        width: {dimensions['qr_size']}mm;
-                        height: {dimensions['qr_size']}mm;
-                    " />
                     {print_double_border_close}
                 </div>
                 """

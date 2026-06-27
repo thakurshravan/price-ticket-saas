@@ -4,7 +4,7 @@ import qrcode
 import io
 import base64
 
-st.set_page_config(page_title="SaaS Bulk Label Generator", layout="wide")
+st.set_page_config(page_title="Custom Bulk Label Generator", layout="wide")
 
 if "file_uploader_key" not in st.session_state:
     st.session_state["file_uploader_key"] = 0
@@ -82,7 +82,6 @@ font_choice = st.sidebar.selectbox("Select Font Family", ["Arial", "Helvetica", 
 title_size = st.sidebar.slider("Product Name Font Size", 8, 24, 11)
 price_size = st.sidebar.slider("Price Font Size", 14, 42, 18)
 
-# Turned this to True by default since your file contains a "WAS" column
 show_was_price = st.sidebar.checkbox("Show Strikethrough 'Was' Price Row", value=True)
 
 st.sidebar.subheader("🏢 Corporate Branding")
@@ -133,11 +132,11 @@ def compute_ticket_styles(style_name, primary_hex):
 styles = compute_ticket_styles(bg_style, primary_color)
 
 active_text_color = "#ffffff" if bg_style == "Dark Mode Luxury" else primary_color
-sku_text_color = "#aaaaaa" if bg_style == "Dark Mode Luxury" else "#555555"
+code_text_color = "#aaaaaa" if bg_style == "Dark Mode Luxury" else "#555555"
 preview_canvas_bg = styles["card_bg"]
 
 # --- MAIN INTERFACE LAYOUT ---
-st.title("🎟️ Custom SaaS Bulk Price Ticket Generator")
+st.title("🎟️ Custom Bulk Price Ticket Generator")
 st.write("Upload a product template file, customize layout properties, and trigger local hardware prints.")
 
 # --- LIVE PREVIEW WINDOW ---
@@ -177,6 +176,12 @@ if logo_b64:
 double_border_inset_open = f'<div style="position: absolute; top: 3px; bottom: 3px; left: 3px; right: 3px; border: 1px solid {primary_color}; box-sizing: border-box; pointer-events: none;">' if bg_style == "Double Thin Border" else ""
 double_border_inset_close = '</div>' if bg_style == "Double Thin Border" else ""
 
+preview_code_above_qr_html = f"""
+<div style="position: absolute; bottom: calc(10px + {dimensions['qr_size'] * 4}px + 6px); right: 8px; font-weight: bold; font-size: 11px; text-align: center; color: {code_text_color}; z-index: 10;">
+    1011480
+</div>
+"""
+
 preview_html = f"""
 <div style="
     width: {dimensions['w'] * 4}px; 
@@ -195,19 +200,20 @@ preview_html = f"""
     {preview_logo_html}
     
     <div style="background: {styles['header_bg']}; padding: 8px; padding-right: 35%; height: 35%; box-sizing: border-box;">
-        <div style="color: {styles['header_text']}; font-size: {title_size + 4}px; font-weight: bold; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
-            Hyphen MagSafe AIRE Clear Case for iPhone 13, Clear
+        <div style="color: {styles['header_text']}; font-size: {title_size + 4}px; line-height: 1.2; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
+            <strong style="text-transform: uppercase;">HYPHEN</strong>: MagSafe AIRE Clear Case for iPhone 13, Clear
         </div>
     </div>
-    <div style="position: absolute; top: 41%; left: {'14px' if bg_style == 'Minimalist Left Ribbon' else '8px'}; color: {sku_text_color}; font-size: 11px;">
-        SKU: 1011480
+    <div style="position: absolute; top: 41%; left: {'14px' if bg_style == 'Minimalist Left Ribbon' else '8px'}; color: {code_text_color}; font-size: 11px; font-weight: bold;">
+        ITEM CODE: 1011480
     </div>
     
     <div style="position: absolute; bottom: 10px; left: {'14px' if bg_style == 'Minimalist Left Ribbon' else '8px'};">
         {preview_price_table_html}
     </div>
     
-    <div style="position: absolute; bottom: 10px; right: 8px; width: {dimensions['qr_size'] * 4}px; height: {dimensions['qr_size'] * 4}px; background-image: url('https://upload.wikimedia.org/wikipedia/commons/d/d0/QR_code_for_QR_Code_tutorial_images_section.png'); background-size: cover; border: 1px solid #eee;"></div>
+    {preview_code_above_qr_html}
+    <div style="position: absolute; bottom: 10px; right: 8px; width: {dimensions['qr_size'] * 4}px; height: {dimensions['qr_size'] * 4}px; background-image: url('data:image/png;base64,{generate_qr_base64("https://example.com")}'); background-size: cover; border: 1px solid #eee;"></div>
     {double_border_inset_close}
 </div>
 """
@@ -237,7 +243,6 @@ if uploaded_file is not None:
         else:
             df = pd.read_excel(io.BytesIO(file_bytes))
         
-        # Strip out encoding characters and hidden whitespace variations safely
         df.columns = df.columns.astype(str).str.strip().str.replace(r'\s+', ' ', regex=True)
         df = df.dropna(how='all')
         
@@ -245,23 +250,19 @@ if uploaded_file is not None:
         for col in df.columns:
             col_lower = str(col).lower().strip()
             
-            # Match SKU / Barcode / Item Code
             if "sku" in col_lower or "barcode" in col_lower or "item code" in col_lower:
                 mapped_cols["SKU"] = col
-            # Match Product Name / Description
             elif "product" in col_lower or "name" in col_lower or "title" in col_lower or "description" in col_lower:
                 mapped_cols["Product Name"] = col
-            # Match Selling Price / Now Price
             elif col_lower == "now" or "price" in col_lower or "retail" in col_lower or "selling" in col_lower:
                 mapped_cols["Price"] = col
-            # Match Was Price / Old Price
             elif col_lower == "was" or "old" in col_lower or "strike" in col_lower:
                 mapped_cols["Was Price"] = col
-            # Match URL
+            elif "brand" in col_lower:
+                mapped_cols["Brand"] = col
             elif "url" in col_lower or "link" in col_lower or "website" in col_lower:
                 mapped_cols["URL"] = col
 
-        # Fallback placeholder string if URL is completely missing
         if "URL" not in mapped_cols:
             df["Generated_URL"] = "https://example.com"
             mapped_cols["URL"] = "Generated_URL"
@@ -279,22 +280,25 @@ if uploaded_file is not None:
             # --- GENERATION ENGINE ---
             html_cards = ""
             for idx, row in df.iterrows():
-                # Format current price
                 try:
                     price_val = float(row[mapped_cols["Price"]])
                     formatted_num = f"{price_val:.2f}"
                 except:
                     formatted_num = str(row[mapped_cols['Price']])
 
-                # Format optional was price
                 was_formatted_num = ""
                 if "Was Price" in mapped_cols and not pd.isna(row[mapped_cols["Was Price"]]):
                     try:
                         was_val = float(row[mapped_cols["Was Price"]])
                         was_formatted_num = f"{was_val:.2f}"
                     except:
-                        was_formatted_num = str(row[mapped_cols['Was Price']])
+                        was_formatted_num = str(row[mapped_cols["Was Price"]])
 
+                brand_val = ""
+                if "Brand" in mapped_cols and not pd.isna(row[mapped_cols["Brand"]]):
+                    brand_val = str(row[mapped_cols["Brand"]]).strip()
+
+                item_code_val = str(row[mapped_cols["SKU"]]).strip()
                 target_url = row[mapped_cols["URL"]]
                 qr_b64 = generate_qr_base64(target_url)
 
@@ -332,6 +336,16 @@ if uploaded_file is not None:
                 print_double_border_open = f'<div style="position: absolute; top: 0.8mm; bottom: 0.8mm; left: 0.8mm; right: 0.8mm; border: 0.25mm solid {primary_color}; box-sizing: border-box; pointer-events: none;">' if bg_style == "Double Thin Border" else ""
                 print_double_border_close = '</div>' if bg_style == "Double Thin Border" else ""
 
+                print_code_above_qr_html = f"""
+                <div style="position: absolute; bottom: calc(4px + {dimensions['qr_size']}mm + 1.5mm); right: 4px; font-weight: bold; font-size: 8pt; text-align: center; color: {code_text_color}; z-index: 10;">
+                    {item_code_val}
+                </div>
+                """
+
+                title_header_content = f'{row[mapped_cols["Product Name"]]}'
+                if brand_val:
+                    title_header_content = f'<strong style="text-transform: uppercase;">{brand_val}</strong>: {title_header_content}'
+
                 html_cards += f"""
                 <div class="ticket-card" style="
                     width: {dimensions['w']}mm;
@@ -352,18 +366,19 @@ if uploaded_file is not None:
                     {card_logo_html}
                     
                     <div style="background: {styles['header_bg']}; padding: 6px; padding-right: 35%; height: 35%; box-sizing: border-box;">
-                        <div style="color: {styles['header_text']}; font-size: {title_size}pt; font-weight: bold; line-height: 1.1; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
-                            {row[mapped_cols["Product Name"]]}
+                        <div style="color: {styles['header_text']}; font-size: {title_size}pt; line-height: 1.1; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
+                            {title_header_content}
                         </div>
                     </div>
-                    <div style="position: absolute; top: 42%; left: {'5mm' if bg_style == 'Minimalist Left Ribbon' else '6px'}; color: {sku_text_color}; font-size: 8pt;">
-                        SKU: {row[mapped_cols["SKU"]]}
+                    <div style="position: absolute; top: 42%; left: {'5mm' if bg_style == 'Minimalist Left Ribbon' else '6px'}; color: {code_text_color}; font-size: 8pt; font-weight: bold;">
+                        ITEM CODE: {item_code_val}
                     </div>
                     
                     <div style="position: absolute; bottom: 6px; left: {'5mm' if bg_style == 'Minimalist Left Ribbon' else '6px'};">
                         {print_price_table_html}
                     </div>
                     
+                    {print_code_above_qr_html}
                     <img src="data:image/png;base64,{qr_b64}" style="
                         position: absolute;
                         bottom: 4px;

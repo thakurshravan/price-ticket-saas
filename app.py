@@ -1,297 +1,251 @@
 import streamlit as st
 import pandas as pd
 import qrcode
+from fpdf import FPDF
 import io
-import base64
+from PIL import Image
 
-st.set_page_config(page_title="Mini Tag Price Label Generator", layout="wide")
+st.set_page_config(page_title="SaaS Bulk Label Generator", layout="wide")
 
-if "file_uploader_key" not in st.session_state:
-    st.session_state["file_uploader_key"] = 0
+# --- SIDEBAR: GLOBAL CONFIGURATION & CUSTOMIZATION ---
+st.sidebar.header("⚙️ Ticket Customization Engine")
 
-# --- GLOBAL UTILITY LOGIC ---
-def generate_qr_base64(url):
-    if pd.isna(url) or not str(url).strip():
-        url = "https://example.com"
-    qr = qrcode.QRCode(version=1, box_size=3, border=1)
-    qr.add_data(str(url))
-    qr.make(fit=True)
-    img = qr.make_image(fill_color="black", back_color="white")
-    buffered = io.BytesIO()
-    img.save(buffered, format="PNG")
-    return base64.b64encode(buffered.getvalue()).decode()
+# 1. Layout Category Selector (Includes Retail Labels and ISO A-Series)
+size_category = st.sidebar.radio(
+    "1. Select Layout Category", 
+    ["Standard Retail Labels", "ISO A-Series Formats (Signage & Displays)"]
+)
 
-def process_logo_to_base64(uploaded_logo):
-    if uploaded_logo is not None:
-        try:
-            return base64.b64encode(uploaded_logo.getvalue()).decode()
-        except:
-            return None
-    return None
-
-# --- SIDEBAR: CONFIGURATION ENGINE ---
-st.sidebar.header("🎨 Mini Tag Layout Engine")
-
-MINI_SIZE_TEMPLATES = {
-    "60x40 mm (Standard Retail Shelf Bzl)": {"w": 60, "h": 40, "qr_size": 13},
-    "40x50 mm (Vertical Product Hang Tag)": {"w": 40, "h": 50, "qr_size": 11},
-    "80x50 mm (Large Counter Slot Display)": {"w": 80, "h": 50, "qr_size": 16},
-    "Custom Size...": None
-}
-
-selected_size = st.sidebar.selectbox("1. Select Label Size Template", list(MINI_SIZE_TEMPLATES.keys()))
-
-if selected_size == "Custom Size...":
-    st.sidebar.markdown("📐 **Manual Dimensions Settings (mm):**")
-    custom_w = st.sidebar.number_input("Tag Width (mm)", min_value=20, max_value=200, value=60, step=1)
-    custom_h = st.sidebar.number_input("Tag Height (mm)", min_value=20, max_value=200, value=40, step=1)
-    custom_qr = st.sidebar.number_input("QR Code Box Size (mm)", min_value=5, max_value=min(custom_w, custom_h)-5, value=13, step=1)
-    dimensions = {"w": custom_w, "h": custom_h, "qr_size": custom_qr}
-else:
-    dimensions = MINI_SIZE_TEMPLATES[selected_size]
-
-primary_color = st.sidebar.color_picker("Text & Accent Color", "#8a1515")
-
-# Extended design selection library containing 50 distinct structural layouts and themes
-bg_style = st.sidebar.selectbox("Ticket Design Theme style", [
-    "01. Solid Primary Header Accent", "02. Minimalist Plain Paper White", "03. Double Thin Inset Border Frame", 
-    "04. Soft Cream Vintage Palette", "05. Light Border Box Layout", "06. Minimalist Left Ribbon Strip", 
-    "07. Modern Gradient Top Row", "08. Dark Mode Luxury Aesthetic", "09. Midnight Premium Charcoal Slate",
-    "10. Warm Gold Royale Trim", "11. Emerald Forest Fresh Grid", "12. Nordic Frosted Ocean Aqua",
-    "13. Sunset Crimson Gradient Wave", "14. Industrial Steel Technical Tech", "15. Rustic Eco Kraft Cardboard",
-    "16. Cyberpunk Violet Neon Glow", "17. Retro Arcade Pixel Block", "18. Classic Monochromatic Ink",
-    "19. Clean Corporate Corporate Line", "20. Bold Bright Tangerine Accent", "21. Subtle Sand Dunes Texture",
-    "22. Lavender Dream Boutique Tint", "23. Royal Navy Formal Prestige", "24. Matcha Green Organic Clean",
-    "25. Pink Velvet Candy Cosmetic", "26. High-Contrast Canary Warning", "27. Deep Wine Cabernet Executive",
-    "28. Electric Cobalt Fusion Stripe", "29. Minimal Slate Geometric Frame", "30. Concrete Grey Loft Minimal",
-    "31. Tropical Palm Breezy Oasis", "32. Copper Metallic Heritage Trim", "33. Polar Ice Minimal Crisp",
-    "34. Desert Quartz Terracotta Clay", "35. Dark Chocolate Handcrafted Treat", "36. Vintage Newspaper Layout",
-    "37. Smooth Sage Contemporary Flat", "38. Neon Lime Shockwave Border", "39. Deep Plum Royal Velvet",
-    "40. Classic Blueprint Architectural", "41. Soft Olive Botanical Organic", "42. Carbon Fiber Performance Grid",
-    "43. Honey Amber Sweet Bakery", "44. Matte Onyx Textured Silhouette", "45. Clean Mint Pharmacy Wellness",
-    "46. Coral Reef Summer Bright", "47. Steel Blue Mechanical Heavy", "48. Orchid Luxe Salon Polish",
-    "49. Brass Foundry Industrial Stamp", "50. Bright Abstract Techno Matrix"
-])
-
-font_choice = st.sidebar.selectbox("Select Font Family", ["Arial", "Helvetica", "Courier"])
-title_size = st.sidebar.slider("Product Name Font Size (pt)", 7, 16, 9)
-price_size = st.sidebar.slider("Price Font Size (pt)", 14, 42, 18)
-show_was_price = st.sidebar.checkbox("Show Strikethrough 'Was' Price Row", value=True)
-
-uploaded_logo = st.sidebar.file_uploader("Upload Brand Logo (PNG/JPG)", type=["png", "jpg", "jpeg"])
-logo_b64 = process_logo_to_base64(uploaded_logo)
-
-web_font = "Courier New, monospace" if font_choice == "Courier" else f"{font_choice}, sans-serif"
-
-# --- CORE THEMATIC DESIGN SOLVER ENGINE ---
-def compute_ticket_styles(style_name, primary_hex):
-    # Baseline fallback presets
-    card_bg = "#ffffff"
-    card_border = f"1.5px solid {primary_hex}"
-    header_bg = primary_hex
-    header_text = "#ffffff"
-    code_text_color = "#444444"
-    card_extra_css = ""
-    
-    # Simple conditional style rules overriding variables across all 50 themes
-    if "02. Minimalist Plain" in style_name:
-        header_bg, header_text, card_border = "transparent", primary_hex, "1px solid #dddddd"
-    elif "03. Double Thin" in style_name:
-        card_extra_css = f"box-shadow: inset 0 0 0 3px #ffffff, inset 0 0 0 4px {primary_hex};"
-    elif "04. Soft Cream" in style_name:
-        card_bg, card_border = "#fdfbf7", "1.5px solid #dcd1bd"
-    elif "06. Minimalist Left" in style_name:
-        card_extra_css = f"border-left: 6px solid {primary_hex};"
-    elif "07. Modern Gradient" in style_name:
-        header_bg = f"linear-gradient(135deg, {primary_hex} 0%, #4f4f4f 100%)"
-    elif "08. Dark Mode" in style_name or "09. Midnight" in style_name:
-        card_bg, header_text, code_text_color = "#121212", "#ffffff", "#aaaaaa"
-        card_border = "1.5px solid #333333"
-    elif "10. Warm Gold" in style_name:
-        header_bg, card_border = "#1c1c1c", "2px solid #d4af37"
-    elif "11. Emerald Forest" in style_name:
-        header_bg, card_border = "#0b5345", "1.5px solid #117a65"
-    elif "13. Sunset Crimson" in style_name:
-        header_bg = "linear-gradient(90deg, #8a1515 0%, #e67e22 100%)"
-    elif "15. Rustic Eco" in style_name:
-        card_bg, header_bg = "#e5c298", "#6e473b"
-    elif "16. Cyberpunk" in style_name:
-        card_bg, header_bg, card_border = "#000000", "#5b0066", "2px solid #00ffff"
-    elif "20. Bold Bright" in style_name:
-        header_bg = "#ff6f00"
-    elif "23. Royal Navy" in style_name:
-        header_bg = "#1b4f72"
-    elif "26. High-Contrast" in style_name:
-        card_bg, header_bg, header_text = "#ffffff", "#f1c40f", "#000000"
-    elif "44. Matte Onyx" in style_name:
-        card_bg, header_bg = "#1a1a1a", "#000000"
-        card_border = "1px solid #222"
-        
-    return {
-        "card_bg": card_bg, "card_border": card_border, "header_bg": header_bg, 
-        "header_text": header_text, "code_text_color": code_text_color, "extra_css": card_extra_css
+# Populate templates based on selected section
+if size_category == "Standard Retail Labels":
+    SIZE_TEMPLATES = {
+        "60x40 mm (Standard Shelf Edge)": {"w": 60, "h": 40, "qr_size": 20},
+        "40x50 mm (Hang Tag)": {"w": 40, "h": 50, "qr_size": 18},
+        "80x50 mm (Large Display)": {"w": 80, "h": 50, "qr_size": 25}
     }
+    max_title_font = 14
+    max_price_font = 24
+    default_title = 10
+    default_price = 16
+else:
+    SIZE_TEMPLATES = {
+        "A7 (74x105 mm) Pocket Sign": {"w": 74, "h": 105, "qr_size": 30},
+        "A6 (105x148 mm) Counter Display": {"w": 105, "h": 148, "qr_size": 45},
+        "A5 (148x210 mm) Table Tent": {"w": 148, "h": 210, "qr_size": 60},
+        "A4 (210x297 mm) Large Poster Sign": {"w": 210, "h": 297, "qr_size": 80}
+    }
+    max_title_font = 48
+    max_price_font = 72
+    default_title = 24
+    default_price = 42
 
-resolved_theme = compute_ticket_styles(bg_style, primary_color)
+selected_size = st.sidebar.selectbox("2. Select Target Dimensions", list(SIZE_TEMPLATES.keys()))
+dimensions = SIZE_TEMPLATES[selected_size]
 
-# --- MAIN INTERFACE DISPLAY ---
-st.title("🎟️ Retail Batch Mini Price Tag Generator")
-st.write("Layout system optimized strictly for high-accuracy standard millimeter thermal and shelf edge feeds.")
-st.divider()
+# 2. Dynamic Color Customization
+st.sidebar.subheader("Color Palette")
+primary_color = st.sidebar.color_picker("Text & Accent Color", "#000000")
+bg_style = st.sidebar.selectbox("Ticket Background Style", ["Plain White", "Light Border Box", "Solid Accent Header"])
 
-# --- DATA IMPORT ENGINE ---
-uploaded_file = st.file_uploader("Upload Product File (.xlsx or .csv)", type=["xlsx", "csv"], key=f"file_uploader_{st.session_state['file_uploader_key']}")
+def hex_to_rgb(hex_str):
+    hex_str = hex_str.lstrip('#')
+    return tuple(int(hex_str[i:i+2], 16) for i in (0, 2, 4))
 
-if uploaded_file is not None:
-    if st.button("🗑️ Clear File & Reset Canvas"):
-        st.session_state["file_uploader_key"] += 1
-        st.rerun()
+p_r, p_g, p_b = hex_to_rgb(primary_color)
 
-    try:
-        if uploaded_file.name.endswith('.csv'):
-            df = pd.read_csv(io.StringIO(uploaded_file.getvalue().decode('utf-8-sig', errors='ignore')))
-        else:
-            df = pd.read_excel(io.BytesIO(uploaded_file.getvalue()))
-        
-        df.columns = df.columns.astype(str).str.strip().str.replace(r'\s+', ' ', regex=True)
-        df = df.dropna(how='all')
-        
-        mapped = {}
-        for col in df.columns:
-            c_low = col.lower().strip()
-            if "item code" in c_low: mapped["Item Code"] = col
-            elif "description" in c_low: mapped["Product Name"] = col
-            elif "highlight" in c_low: mapped["Highlights"] = col
-            elif "brand" in c_low: mapped["Brand"] = col
-            elif c_low == "now": mapped["Price"] = col
-            elif c_low == "was": mapped["Was Price"] = col
-            elif c_low == "sku" or c_low == "barcode": mapped["SKU"] = col
-            elif "url" in c_low or "link" in c_low: mapped["URL"] = col
+# 3. Typography Adjustments
+st.sidebar.subheader("Typography")
+font_choice = st.sidebar.selectbox("Select Font Family", ["Arial", "Helvetica", "Courier"])
+title_size = st.sidebar.slider("Product Name Font Size", 8, max_title_font, default_title)
+price_size = st.sidebar.slider("Price Font Size", 12, max_price_font, default_price)
 
-        required = ["Item Code", "Product Name", "Price", "SKU"]
-        missing = [r for r in required if r not in mapped]
+# --- MAIN INTERFACE ---
+st.title("🎟️ Custom SaaS Bulk Price Ticket Generator")
+st.write("Configure dimensions/branding on the sidebar, choose your input method below, and export clean print-ready vector PDFs.")
 
-        if missing:
-            st.error(f"Missing required columns: {missing}. Detected columns: {list(df.columns)}")
-        else:
-            st.success("✨ Spreadsheet structure verified successfully!")
-            st.dataframe(df.head(3), use_container_width=True)
+# Dual Input Processing Layout via Tabs
+tabs = st.tabs(["📊 Excel Automation Pipeline", "🖼️ Single Image Ticket Converter"])
 
-            # --- GENERATION CONTAINER LOOP ---
-            html_cards = ""
-            for idx, row in df.iterrows():
-                try:
-                    p_val = float(row[mapped["Price"]])
-                    formatted_price = f"{p_val:.2f}"
-                except:
-                    formatted_price = str(row[mapped['Price']])
-
-                was_formatted_num = ""
-                if "Was Price" in mapped and not pd.isna(row[mapped["Was Price"]]):
-                    try:
-                        was_val = float(row[mapped["Was Price"]])
-                        was_formatted_num = f"{was_val:.2f}"
-                    except:
-                        was_formatted_num = str(row[mapped["Was Price"]])
-
-                brand = str(row[mapped["Brand"]]).strip() if "Brand" in mapped else ""
-                highlights = str(row[mapped["Highlights"]]).strip() if "Highlights" in mapped else ""
-                highlights = highlights.replace('\n', '<br>')
-                
-                sku = str(row[mapped["SKU"]]).strip()
-                item_code = str(row[mapped["Item Code"]]).strip()
-                qr_b64 = generate_qr_base64(row[mapped["URL"]] if "URL" in mapped else "https://example.com")
-
-                scale_factor = max(1.0, dimensions['w'] / 60.0)
-                calculated_highlights_pt = max(7.5, 8.0 * (scale_factor * 0.72))
-                calculated_labels_pt = max(8.0, 8.0 * (scale_factor * 0.72))
-
-                print_price_html = f"""
-                <table style="border-collapse: collapse; border: none; margin: 0; padding: 0; font-family: {web_font}; text-align: left;">
-                    <tbody>
-                """
-                if show_was_price and was_formatted_num:
-                    print_price_html += f"""
-                        <tr>
-                            <td style="padding: 0 4px 0 0; font-size: {max(8.0, (price_size - 6) * scale_factor)}pt; color: #888; font-weight: bold; line-height: 1;">AED</td>
-                            <td style="padding: 0; font-size: {price_size - 4}pt; color: #888; text-decoration: line-through; line-height: 1;">{was_formatted_num}</td>
-                        </tr>
-                    """
-                print_price_html += f"""
-                        <tr>
-                            <td style="padding: 0 4px 0 0; font-size: {max(10.0, (price_size - 2) * scale_factor)}pt; color: {primary_color}; font-weight: bold; line-height: 1;">AED</td>
-                            <td style="padding: 0; font-size: {price_size}pt; font-weight: bold; color: {primary_color}; line-height: 1;">{formatted_price}</td>
-                        </tr>
-                    </tbody>
-                </table>
-                """
-
-                print_highlights_html = f"""
-                <div style="color: #333; font-size: {calculated_highlights_pt}pt; line-height: 1.35; margin-top: 2px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical;">
-                    <strong style="text-transform: uppercase; font-weight: bold; display: block; margin-bottom: 1.5px; font-size: {calculated_highlights_pt + 0.5}pt;">PRODUCT HIGHLIGHTS:</strong>
-                    {highlights}
-                </div>
-                """ if highlights else ""
-
-                header_text_content = f'<strong style="text-transform: uppercase; font-weight: 900;">{brand}</strong>: <span style="font-weight: normal;">{row[mapped["Product Name"]]}</span>' if brand else f'<span style="font-weight: normal;">{row[mapped["Product Name"]]}</span>'
-
-                card_logo_html = f"""
-                <div style="position: absolute; top: 1mm; right: 2mm; max-width: 25%; max-height: 20%; display: flex; justify-content: flex-end; align-items: center; z-index: 20;">
-                    <img src="data:image/png;base64,{logo_b64}" style="max-width: 100%; max-height: 100%; object-fit: contain;" />
-                </div>
-                """ if logo_b64 else ""
-
-                html_cards += f"""
-                <div class="ticket-card" style="width: {dimensions['w']}mm; height: {dimensions['h']}mm; border: {resolved_theme['card_border']}; background: {resolved_theme['card_bg']}; {resolved_theme['extra_css']} box-sizing: border-box; position: relative; font-family: {web_font}; overflow: hidden; display: inline-block; margin: 1.5mm; vertical-align: top; text-align: left; page-break-inside: avoid; break-inside: avoid;">
-                    {card_logo_html}
-                    <div style="background: {resolved_theme['header_bg']}; padding: 4px 6px; display: flex; align-items: center; justify-content: center; text-align: center; height: 26%; box-sizing: border-box; overflow: hidden;">
-                        <div style="color: {resolved_theme['header_text']}; font-size: {title_size}pt; line-height: 1.25; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; width: 100%;">{header_text_content}</div>
-                    </div>
-                    <div style="height: 74%; padding: 4px 6px; box-sizing: border-box; display: flex; justify-content: space-between; align-items: stretch; gap: 4px;">
-                        
-                        <div style="width: 62%; display: flex; flex-direction: column; justify-content: space-between; box-sizing: border-box; overflow: hidden;">
-                            <div>
-                                <div style="color: {resolved_theme['code_text_color']}; font-size: {calculated_labels_pt}pt; font-weight: bold; white-space: nowrap; line-height: 1; margin-bottom: 2px;">{item_code}</div>
-                                {print_highlights_html}
-                            </div>
-                            <div>{print_price_html}</div>
-                        </div>
-                        
-                        <div style="width: 35%; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; box-sizing: border-box; overflow: hidden;">
-                            <div style="font-weight: bold; font-size: {calculated_labels_pt}pt; text-align: center; color: {resolved_theme['code_text_color']}; margin-bottom: 1.5mm; width: 100%; text-transform: uppercase; line-height: 1;">SKU</div>
-                            <img src="data:image/png;base64,{qr_b64}" style="width: {dimensions['qr_size']}mm; height: {dimensions['qr_size']}mm; display: block;" />
-                        </div>
-                        
-                    </div>
-                </div>
-                """
-
-            st.subheader("🖨️ Printable Mini Document Feed")
+# --- TAB 1: EXCEL AUTOMATION PIPELINE ---
+with tabs[0]:
+    st.markdown("📥 **Excel Format Requirement:** Columns must contain: `SKU`, `Product Name`, `Price`, `URL`")
+    uploaded_file = st.file_uploader("Upload Product Excel File (.xlsx)", type=["xlsx"], key="excel_uploader")
+    
+    if uploaded_file is not None:
+        try:
+            df = pd.read_excel(uploaded_file)
+            df.columns = df.columns.str.strip()
+            st.success("⚡ Data payload imported successfully!")
             
-            iframe_content = f"""
-            <html>
-            <head>
-                <style>
-                    body {{ margin: 0; padding: 0; font-family: sans-serif; text-align: center; background: #fafafa; }}
-                    .print-btn {{ background-color: {primary_color}; color: white; border: none; padding: 12px 30px; font-size: 14px; font-weight: bold; border-radius: 4px; cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.15); margin: 20px auto; display: block; text-transform: uppercase; letter-spacing: 0.5px; }}
-                    .print-btn:hover {{ opacity: 0.9; }}
-                    .page-container {{ width: 210mm; padding: 5mm; margin: 0 auto; background: white; box-sizing: border-box; text-align: left; display: flex; flex-wrap: wrap; align-content: flex-start; }}
+            col1, col2 = st.columns([1, 2])
+            with col1:
+                st.metric(label="Total Tickets to Process", value=len(df))
+            with col2:
+                st.write("Data Preview:")
+                st.dataframe(df.head(3), height=120)
+            
+            required_cols = ["SKU", "Product Name", "Price", "URL"]
+            missing_cols = [col for col in required_cols if col not in df.columns]
+            
+            if missing_cols:
+                st.error(f"Execution Halted. Missing columns inside Excel: {missing_cols}")
+            else:
+                if st.button("🚀 Render Custom Tickets Portfolio", key="btn_excel"):
+                    orient = 'L' if dimensions['w'] > dimensions['h'] else 'P'
+                    w, h = dimensions['w'], dimensions['h']
+                    pdf = FPDF(orientation=orient, unit='mm', format=(w, h))
+                    pdf.set_auto_page_break(auto=False, margin=0)
+                    header_height = max(12, int(h * 0.15)) if bg_style == "Solid Accent Header" else 0
                     
-                    @media print {{
-                        @page {{ margin: 0mm; size: A4 portrait; }}
-                        body {{ background: white; margin: 0; padding: 0; }}
-                        .print-btn {{ display: none !important; }}
-                        .page-container {{ width: 210mm; padding: 6mm 4mm; margin: 0 auto; background: transparent; border: none; box-shadow: none; display: flex !important; flex-wrap: wrap !important; }}
-                        .ticket-card {{ -webkit-print-color-adjust: exact; print-color-adjust: exact; color-adjust: exact; }}
-                    }}
-                </style>
-            </head>
-            <body>
-                <button class="print-btn" onclick="window.print()">🖨️ Print Bulk Mini Sheet</button>
-                <div class="page-container">{html_cards}</div>
-            </body>
-            </html>
-            """
-            st.components.v1.html(iframe_content, height=850, scrolling=True)
-    except Exception as e:
-        st.error(f"Data Parser Error: {e}")
+                    for idx, row in df.iterrows():
+                        pdf.add_page()
+                        
+                        if bg_style == "Solid Accent Header":
+                            pdf.set_fill_color(p_r, p_g, p_b)
+                            pdf.rect(0, 0, w, header_height, 'F')
+                            text_r, text_g, text_b = 255, 255, 255
+                        else:
+                            text_r, text_g, text_b = p_r, p_g, p_b
+                            
+                        if bg_style == "Light Border Box":
+                            pdf.set_draw_color(p_r, p_g, p_b)
+                            pdf.set_linewidth(max(0.4, h * 0.005))
+                            margin_offset = max(1.5, w * 0.02)
+                            pdf.rect(margin_offset, margin_offset, w - (margin_offset * 2), h - (margin_offset * 2))
+                        
+                        # QR Generation
+                        qr = qrcode.QRCode(box_size=1, border=0)
+                        qr.add_data(str(row['URL']))
+                        qr.make(fit=True)
+                        qr_img = qr.make_image(fill_color="black", back_color="white")
+                        img_buffer = io.BytesIO()
+                        qr_img.save(img_buffer, format="PNG")
+                        img_buffer.seek(0)
+                        
+                        # Layout Drawings
+                        pdf.set_text_color(text_r, text_g, text_b)
+                        pdf.set_font(font_choice, 'B', size=title_size)
+                        title_y = (header_height / 2) - (title_size * 0.35) if header_height > 0 else max(4, h * 0.05)
+                        pdf.set_xy(max(4, w * 0.05), max(3.5, title_y))
+                        pdf.cell(w - max(8, w * 0.1), title_size * 0.5, text=str(row['Product Name'])[:40], new_x="LMARGIN", new_y="NEXT", align='L')
+                        
+                        pdf.set_text_color(p_r, p_g, p_b)
+                        sku_font_size = max(8, int(title_size * 0.6))
+                        pdf.set_font(font_choice, '', size=sku_font_size)
+                        sku_y = (header_height + max(4, h * 0.03)) if header_height > 0 else (title_y + (title_size * 0.5) + max(2, h * 0.02))
+                        pdf.set_xy(max(4, w * 0.05), sku_y)
+                        pdf.cell(w - max(8, w * 0.1), sku_font_size * 0.5, text=f"SKU: {row['SKU']}", new_x="LMARGIN", new_y="NEXT", align='L')
+                        
+                        qr_dim = dimensions['qr_size']
+                        pdf.image(img_buffer, x=w - qr_dim - max(4, w * 0.05), y=h - qr_dim - max(4, h * 0.05), w=qr_dim, h=qr_dim)
+                        
+                        pdf.set_font(font_choice, 'B', size=price_size)
+                        pdf.set_xy(max(4, w * 0.05), h - (price_size * 0.4) - max(6, h * 0.05))
+                        pdf.cell(w - qr_dim - max(12, w * 0.1), price_size * 0.4, text=f"AED {row['Price']:.2f}", align='L')
+                    
+                    st.balloons()
+                    st.download_button(
+                        label="📥 Download Print-Ready Dynamic PDF",
+                        data=bytes(pdf.output()),
+                        file_name="custom_bulk_tickets.pdf",
+                        mime="application/pdf"
+                    )
+        except Exception as e:
+            st.error(f"Fatal Parser Error: {e}")
+
+# --- TAB 2: SINGLE IMAGE TICKET CONVERTER ---
+with tabs[1]:
+    st.markdown("🖼️ **Image Label Feature:** Upload any item picture, add details manually below, and generate a styled display ticket.")
+    
+    img_file = st.file_uploader("Upload Product Image (.png, .jpg, .jpeg)", type=["png", "jpg", "jpeg"], key="img_uploader")
+    
+    col_im1, col_im2 = st.columns(2)
+    with col_im1:
+        img_title = st.text_input("Product Title Line", "Premium Selected Item")
+        img_sku = st.text_input("Product SKU Reference", "SKU-IMG-99")
+    with col_im2:
+        img_price = st.number_input("Price Value (AED)", min_value=0.0, value=29.99, step=0.01)
+        img_url = st.text_input("Target QR Redirection Link", "https://price-ticket-saas.onrender.com")
+        
+    if img_file is not None:
+        if st.button("🚀 Process Image to Vector Ticket", key="btn_img"):
+            try:
+                # Open image and handle potential color palette profiles cleanly
+                raw_image = Image.open(img_file)
+                if raw_image.mode in ("RGBA", "P"):
+                    raw_image = raw_image.convert("RGB")
+                
+                processed_img_buffer = io.BytesIO()
+                raw_image.save(processed_img_buffer, format="JPEG", quality=90)
+                processed_img_buffer.seek(0)
+                
+                # PDF Initialization
+                orient = 'L' if dimensions['w'] > dimensions['h'] else 'P'
+                w, h = dimensions['w'], dimensions['h']
+                pdf = FPDF(orientation=orient, unit='mm', format=(w, h))
+                pdf.set_auto_page_break(auto=False, margin=0)
+                pdf.add_page()
+                
+                header_height = max(12, int(h * 0.15)) if bg_style == "Solid Accent Header" else 0
+                
+                # Render Background Layout Settings
+                if bg_style == "Solid Accent Header":
+                    pdf.set_fill_color(p_r, p_g, p_b)
+                    pdf.rect(0, 0, w, header_height, 'F')
+                    text_r, text_g, text_b = 255, 255, 255
+                else:
+                    text_r, text_g, text_b = p_r, p_g, p_b
+                    
+                if bg_style == "Light Border Box":
+                    pdf.set_draw_color(p_r, p_g, p_b)
+                    pdf.set_linewidth(max(0.4, h * 0.005))
+                    margin_offset = max(1.5, w * 0.02)
+                    pdf.rect(margin_offset, margin_offset, w - (margin_offset * 2), h - (margin_offset * 2))
+                
+                # QR Generation
+                qr = qrcode.QRCode(box_size=1, border=0)
+                qr.add_data(img_url)
+                qr.make(fit=True)
+                qr_img = qr.make_image(fill_color="black", back_color="white")
+                qr_buffer = io.BytesIO()
+                qr_img.save(qr_buffer, format="PNG")
+                qr_buffer.seek(0)
+                
+                # Draw Title Text
+                pdf.set_text_color(text_r, text_g, text_b)
+                pdf.set_font(font_choice, 'B', size=title_size)
+                title_y = (header_height / 2) - (title_size * 0.35) if header_height > 0 else max(4, h * 0.05)
+                pdf.set_xy(max(4, w * 0.05), max(3.5, title_y))
+                pdf.cell(w - max(8, w * 0.1), title_size * 0.5, text=img_title[:40], new_x="LMARGIN", new_y="NEXT", align='L')
+                
+                # Draw SKU
+                pdf.set_text_color(p_r, p_g, p_b)
+                sku_font_size = max(8, int(title_size * 0.6))
+                pdf.set_font(font_choice, '', size=sku_font_size)
+                sku_y = (header_height + max(4, h * 0.03)) if header_height > 0 else (title_y + (title_size * 0.5) + max(2, h * 0.02))
+                pdf.set_xy(max(4, w * 0.05), sku_y)
+                pdf.cell(w - max(8, w * 0.1), sku_font_size * 0.5, text=f"SKU: {img_sku}", new_x="LMARGIN", new_y="NEXT", align='L')
+                
+                # Embed Uploaded Image
+                qr_dim = dimensions['qr_size']
+                img_display_w = max(15, int(w * 0.25))
+                img_display_h = max(15, int(h * 0.25))
+                pdf.image(processed_img_buffer, x=max(4, w * 0.05), y=sku_y + max(4, h * 0.04), w=img_display_w, h=img_display_h)
+                
+                # Embed QR Code
+                pdf.image(qr_buffer, x=w - qr_dim - max(4, w * 0.05), y=h - qr_dim - max(4, h * 0.05), w=qr_dim, h=qr_dim)
+                
+                # Draw Price Text
+                pdf.set_font(font_choice, 'B', size=price_size)
+                pdf.set_xy(max(4, w * 0.05), h - (price_size * 0.4) - max(6, h * 0.05))
+                pdf.cell(w - qr_dim - max(12, w * 0.1), price_size * 0.4, text=f"AED {img_price:.2f}", align='L')
+                
+                st.balloons()
+                st.download_button(
+                    label="📥 Download Photo-Converted Ticket",
+                    data=bytes(pdf.output()),
+                    file_name="converted_image_ticket.pdf",
+                    mime="application/pdf"
+                )
+            except Exception as e:
+                st.error(f"Image Rendering Fault: {e}")
